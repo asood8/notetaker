@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pydantic import ValidationError
 
 from notetaker.chunking import Chunk
+from notetaker.dedup import Deduper
 from notetaker.llm.base import LLMClient, LLMError
 from notetaker.models import Card, CardBatch
 from notetaker.prompts import build_prompt
@@ -39,7 +40,7 @@ def generate_cards(
     so failures are counted and reported rather than raised.
     """
     result = GenerationResult()
-    seen: set[str] = set()
+    deduper = Deduper()
     shared_tags = list(extra_tags)
 
     for chunk in chunks:
@@ -63,11 +64,9 @@ def generate_cards(
 
         added = 0
         for card in batch.cards[:max_cards_per_chunk]:
-            key = card.dedup_key()
-            if key in seen:
+            if not deduper.add(card):
                 result.duplicates += 1
                 continue
-            seen.add(key)
             card.tags = _tags_for(chunk, shared_tags)
             result.cards.append(card)
             added += 1
