@@ -13,12 +13,44 @@ $ python scripts/compare_models.py --models llama3.2 phi4-mini:3.8b --show-cards
 
 | Model | Time | Cards | Honors `format` schema | Notes |
 | --- | --- | --- | --- | --- |
-| `llama3.2` (3B) | 81s | 20 | yes | Best of the set. The default. |
+| `llama3.2` (3B) | 81-112s | 20 | yes | The default. |
+| `llama3.1:8b` | 161s | 21 | yes | Better coverage, writes list answers. |
 | `phi4-mini:3.8b` | 142s | 18 | yes | Writes compound questions. |
 | `qwen2.5-coder:7b` | ~26s/call | — | yes | Fine, slower, no quality gain. |
 | `qwen3.5:4b` | 280s+/call | — | only while thinking | Impractical. |
 | `qwen3.5:9b` | 280s+/call | — | only while thinking | Impractical. |
 | `deepseek-r1:8b` | — | — | — | Reasoning model; same problem. |
+
+## 3B against 8B
+
+The automated counters cannot separate these two: both scored zero yes/no,
+zero compound, zero wordy. The difference only shows up reading the cards.
+
+`llama3.1:8b` covers the material more completely. It picked up the location
+of the Krebs cycle and the fact that active transport needs energy "usually
+supplied by ATP", both of which the 3B model skipped.
+
+But it also writes list answers, which is exactly what the prompt forbids:
+
+> What are the products of one turn of the Krebs cycle?
+> → Three NADH, one FADH2, and one ATP
+
+`llama3.2` split that same fact into three separate cards, which is what a
+flashcard should be. It has its own misses -- "How does the cell membrane move
+laterally? → free to move" is close to meaningless -- and `llama3.1:8b`
+produced one clumsy question ("What is osmosis the diffusion of across a
+membrane?").
+
+Call it a wash on quality, at 44% more time. `llama3.2` stays the default
+because it is fast enough to iterate with and runs on modest hardware. On a
+machine where 161 seconds is not a problem, `llama3.1:8b` is a reasonable
+choice for its better coverage:
+
+```console
+$ notetaker cards notes.md --model llama3.1:8b
+```
+
+What is *not* worth doing is reaching further up the size ladder.
 
 ## Bigger is not better here
 

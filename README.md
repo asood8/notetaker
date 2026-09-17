@@ -84,7 +84,8 @@ starting point rather than a benchmark:
 
 | Model | Per call | Schema honored | Notes |
 | --- | --- | --- | --- |
-| `llama3.2` (3B) | ~13s | yes | Best cards of the set. The default. |
+| `llama3.2` (3B) | ~13s | yes | Fast, good cards. The default. |
+| `llama3.1:8b` | ~40s | yes | Better coverage; writes list answers. |
 | `phi4-mini:3.8b` | ~20s | yes | Fine, but writes compound questions. |
 | `qwen2.5-coder:7b` | ~26s | yes | Solid, slower for no real gain. |
 | `qwen3.5:4b` / `qwen3.5:9b` | 280s+ | see below | Impractical here. |
@@ -94,7 +95,9 @@ Full measurements, including the cards each model produced, are in
 [docs/model-notes.md](docs/model-notes.md).
 
 Bigger is not better for this task. Pulling facts out of a paragraph is not a
-reasoning problem, and a 3B instruct model does it well.
+reasoning problem, and a 3B instruct model does it well. Going from 3B to 8B
+bought slightly better coverage and cost 44% more time — a wash. If your
+machine is quick enough not to care, `--model llama3.1:8b` is a fair choice.
 
 Reasoning models are the trap. The qwen3.5 family spends minutes thinking before
 answering — over four minutes per section on an already-loaded model, which
