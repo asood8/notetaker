@@ -138,6 +138,7 @@ def _report_failures(result: GenerationResult) -> None:
 def _notes_on(result: GenerationResult) -> str:
     counts = (
         ("duplicate", result.duplicates),
+        ("low-quality", result.low_quality),
         ("invalid", result.invalid_responses),
         ("failed", result.failed_chunks),
     )

@@ -12,6 +12,7 @@ from notetaker.dedup import Deduper
 from notetaker.llm.base import LLMClient, LLMError
 from notetaker.models import Card, CardBatch
 from notetaker.prompts import build_prompt
+from notetaker.quality import rejection_reason
 
 DEFAULT_MAX_CARDS_PER_CHUNK = 8
 
@@ -22,6 +23,7 @@ class GenerationResult:
 
     cards: list[Card] = field(default_factory=list)
     duplicates: int = 0
+    low_quality: int = 0
     invalid_responses: int = 0
     failed_chunks: int = 0
 
@@ -64,6 +66,9 @@ def generate_cards(
 
         added = 0
         for card in batch.cards[:max_cards_per_chunk]:
+            if rejection_reason(card) is not None:
+                result.low_quality += 1
+                continue
             if not deduper.add(card):
                 result.duplicates += 1
                 continue
