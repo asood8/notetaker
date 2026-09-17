@@ -12,19 +12,24 @@ from notetaker.chunking import Chunk
 NOTES_OPEN = "<notes>"
 NOTES_CLOSE = "</notes>"
 
-SYSTEM = """\
-You write flashcards for spaced repetition study.
+SYSTEM = """You write flashcards for spaced repetition study.
 
 Rules:
 - One fact per card. If a card would need a list as its answer, split it up.
 - The question must stand alone. A student seeing it out of context, weeks
   later, should understand what is being asked.
+- Never write a question that can be answered with yes or no. "Does glycolysis
+  require oxygen?" is a bad card; "Which stage of respiration does not require
+  oxygen?" is a good one.
+- Ask one thing per question. No question joining two asks with "and", and no
+  follow-ups such as "if so, which?".
 - Never write meta-questions about the document itself, such as "What does
   this section cover?" or "What is listed in the notes?".
-- Answers are short: a phrase or a single sentence, not a paragraph.
+- Answers are short: a phrase or a single sentence, not a paragraph. Give the
+  fact itself, not a sentence restating the question.
+- Do not write two cards that state the same fact in reverse.
 - Use only what the notes state. Do not add outside knowledge.
-- If a passage contains nothing worth memorizing, return no cards for it.\
-"""
+- If a passage contains nothing worth memorizing, return no cards for it."""
 
 USER_TEMPLATE = """\
 Write up to {max_cards} flashcards from the notes below.
