@@ -83,3 +83,30 @@ def test_progress_is_reported_per_section(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0
     assert "[1/1]" in result.output
+
+
+def test_cards_writes_both_an_apkg_and_a_tsv(tmp_path: Path) -> None:
+    notes = write_notes(tmp_path)
+    out = tmp_path / "out"
+
+    result = runner.invoke(
+        app, ["cards", str(notes), "--llm", "fake", "--out", str(out), "--deck", "Bio::Ch1"]
+    )
+
+    assert result.exit_code == 0
+    assert (out / "bio.apkg").exists()
+    assert (out / "bio.tsv").exists()
+
+
+def test_tags_with_spaces_are_made_safe_for_anki(tmp_path: Path) -> None:
+    notes = write_notes(tmp_path)
+    out = tmp_path / "out"
+
+    result = runner.invoke(
+        app,
+        ["cards", str(notes), "--llm", "fake", "--out", str(out), "--tag", "bio 101"],
+    )
+
+    assert result.exit_code == 0
+    tags = (out / "bio.tsv").read_text(encoding="utf-8").splitlines()[4].split("\t")[2]
+    assert "bio_101" in tags

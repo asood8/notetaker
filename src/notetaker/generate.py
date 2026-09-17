@@ -82,4 +82,9 @@ def _tags_for(chunk: Chunk, extra: list[str]) -> list[str]:
     tags = list(extra)
     if chunk.tag:
         tags.append(chunk.tag)
-    return tags
+    return [clean_tag(tag) for tag in tags if tag.strip()]
+
+
+def clean_tag(tag: str) -> str:
+    """Make a tag safe for Anki, where whitespace separates one tag from the next."""
+    return "_".join(tag.split())

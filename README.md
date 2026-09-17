@@ -8,8 +8,8 @@ studying, and it's mostly mechanical. A model that can read a paragraph can
 usually pull the handful of facts worth remembering out of it. This wraps that
 into something you can point at a file.
 
-> **Status:** working, but young. Generation and TSV export are done. Anki
-> `.apkg` packages and cloze cards are next.
+> **Status:** working, but young. Generation and both export formats are done.
+> Cloze cards and better prompts are next.
 
 ## Usage
 
@@ -26,10 +26,16 @@ $ notetaker cards examples/sample_notes.md --model llama3.2
 
   generated 19 cards  (2 duplicate dropped)
 
-  out/sample_notes.tsv   File > Import in Anki
+  out/sample_notes.apkg   double-click to import
+  out/sample_notes.tsv    or use File > Import
 ```
 
-That run took about a minute. A sample of what came out:
+That run took about a minute. You get two files. The `.apkg` is a real Anki
+deck package — double-click it and Anki handles the rest, keeping the note type
+and tags intact. The `.tsv` is there for when you'd rather look the cards over
+in a spreadsheet and fix a few before importing.
+
+A sample of what came out:
 
 | Question | Answer | Tags |
 | --- | --- | --- |
@@ -50,6 +56,7 @@ notetaker cards NOTES [OPTIONS]
   --chunk-chars INT  Characters of notes per call     [default: 4000]
   --num-ctx INT      Context window, in tokens        [default: 8192]
   --timeout FLOAT    Seconds to wait per call         [default: 180]
+  --deck TEXT        Anki deck name                   [default: file name]
   --tag TEXT         Extra tag; repeatable
 ```
 
@@ -107,8 +114,8 @@ Set `OLLAMA_HOST` if your server isn't on `localhost:11434`.
 ## How it works
 
 ```
-notes.md ──▶ chunk ──▶ [model, JSON schema] ──▶ validate ──▶ dedup ──▶ TSV
-            (headings)      (Ollama)            (pydantic)
+notes.md ──▶ chunk ──▶ [model, JSON schema] ──▶ validate ──▶ dedup ──┬─▶ .apkg
+            (headings)      (Ollama)            (pydantic)          └─▶ .tsv
 ```
 
 Requests use Ollama's `format` parameter with a JSON schema generated from the
@@ -130,9 +137,14 @@ $ ruff check . && ruff format --check .
 stubs and a mocked HTTP transport. Only the tests marked `integration` need
 Ollama, and CI never runs those.
 
+Cards carry a GUID derived from their question text, and the deck gets an ID
+derived from its name. That means re-running after editing your notes updates
+the cards already in Anki rather than leaving you with two near-identical copies
+of your deck. Changing a question creates a new card; changing only the answer
+updates the existing one.
+
 ## Planned
 
-- Anki `.apkg` export, with stable IDs so re-running updates cards instead of duplicating them
 - Cloze cards
 - Better prompts — the current ones still allow the occasional yes/no card
 - PDF input

@@ -10,7 +10,7 @@ import typer
 
 from notetaker import __version__
 from notetaker.chunking import DEFAULT_MAX_CHARS, Chunk, chunk_markdown
-from notetaker.export import write_tsv
+from notetaker.export import write_apkg, write_tsv
 from notetaker.generate import (
     DEFAULT_MAX_CARDS_PER_CHUNK,
     GenerationResult,
@@ -62,6 +62,9 @@ def cards(
     timeout: Annotated[
         float, typer.Option("--timeout", help="Seconds to wait per model call.")
     ] = DEFAULT_TIMEOUT,
+    deck: Annotated[
+        str | None, typer.Option("--deck", help="Anki deck name. Defaults to the file name.")
+    ] = None,
     tag: Annotated[list[str] | None, typer.Option("--tag", help="Extra tag; repeatable.")] = None,
 ) -> None:
     """Generate flashcards from a notes file."""
@@ -93,9 +96,13 @@ def cards(
 
     typer.echo(f"  generated {len(result.cards)} cards{_notes_on(result)}")
 
+    deck_name = deck or notes.stem
+    apkg_path = write_apkg(result.cards, out / f"{notes.stem}.apkg", deck_name)
     tsv_path = write_tsv(result.cards, out / f"{notes.stem}.tsv")
+
     typer.echo("")
-    typer.echo(f"  {tsv_path}   File > Import in Anki")
+    typer.echo(f"  {apkg_path}   double-click to import")
+    typer.echo(f"  {tsv_path}   or use File > Import")
 
 
 def _progress(total: int) -> Callable[[Chunk, int], None]:
@@ -105,7 +112,8 @@ def _progress(total: int) -> Callable[[Chunk, int], None]:
     def report(chunk: Chunk, added: int) -> None:
         state["done"] += 1
         label = chunk.tag or "(no heading)"
-        typer.echo(f"  [{state['done']}/{total}] {label}  ->  {added} cards")
+        plural = "" if added == 1 else "s"
+        typer.echo(f"  [{state['done']}/{total}] {label}  ->  {added} card{plural}")
 
     return report
 
