@@ -2,5 +2,6 @@
 
 from notetaker.llm.base import LLMClient, LLMError
 from notetaker.llm.fake import FakeLLM
+from notetaker.llm.ollama import OllamaLLM
 
-__all__ = ["FakeLLM", "LLMClient", "LLMError"]
+__all__ = ["FakeLLM", "LLMClient", "LLMError", "OllamaLLM"]
