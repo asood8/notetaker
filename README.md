@@ -90,6 +90,9 @@ starting point rather than a benchmark:
 | `qwen3.5:4b` / `qwen3.5:9b` | 280s+ | see below | Impractical here. |
 | `deepseek-r1:8b` | — | — | Reasoning model; same problem. |
 
+Full measurements, including the cards each model produced, are in
+[docs/model-notes.md](docs/model-notes.md).
+
 Bigger is not better for this task. Pulling facts out of a paragraph is not a
 reasoning problem, and a 3B instruct model does it well.
 
@@ -97,8 +100,10 @@ Reasoning models are the trap. The qwen3.5 family spends minutes thinking before
 answering — over four minutes per section on an already-loaded model, which
 would make a normal set of lecture notes take an hour. The obvious fix, passing
 `think: false`, backfires: those models then stop honoring the JSON schema
-entirely and return markdown. So `notetaker` never sends `think`, and simply
-recommends against reasoning models. If one times out, the error message says so.
+entirely and return markdown. Thinking levels don't help either — `think: "low"`
+still blew past a 400-second timeout. So `notetaker` never sends `think`, and
+simply recommends against reasoning models. If one times out, the error message
+says so.
 
 ## Requirements
 
@@ -114,8 +119,8 @@ Set `OLLAMA_HOST` if your server isn't on `localhost:11434`.
 ## How it works
 
 ```
-notes.md ──▶ chunk ──▶ [model, JSON schema] ──▶ validate ──▶ dedup ──┬─▶ .apkg
-            (headings)      (Ollama)            (pydantic)          └─▶ .tsv
+notes.md ─▶ chunk ─▶ [model, schema] ─▶ validate ─▶ filter ─▶ dedup ─┬─▶ .apkg
+           (headings)     (Ollama)      (pydantic)  (quality)       └─▶ .tsv
 ```
 
 Requests use Ollama's `format` parameter with a JSON schema generated from the
@@ -133,6 +138,12 @@ $ pytest -m integration   # hits a real local model
 $ ruff check . && ruff format --check .
 ```
 
+To compare models yourself:
+
+```console
+$ python scripts/compare_models.py --models llama3.2 phi4-mini:3.8b --show-cards
+```
+
 `LLMClient` is a small protocol, so the tests drive the whole pipeline with
 stubs and a mocked HTTP transport. Only the tests marked `integration` need
 Ollama, and CI never runs those.
@@ -143,10 +154,23 @@ the cards already in Anki rather than leaving you with two near-identical copies
 of your deck. Changing a question creates a new card; changing only the answer
 updates the existing one.
 
+## Card quality
+
+Two things are dropped automatically. Cards that duplicate an earlier one are
+removed, including inverted pairs — asking "Where are peripheral proteins
+attached?" and "What is attached to the surface?" is one fact asked twice.
+Cards that can be answered by guessing are removed too: yes/no questions,
+questions asking two things at once, and paragraph-length answers.
+
+That last one is enforced in code rather than in the prompt, because asking
+politely didn't work. `llama3.2` produced four yes/no cards from the sample
+notes despite the prompt explicitly forbidding them, with an example. Small
+models are bad at negative instructions. With the filter, the same run produces
+zero.
+
 ## Planned
 
 - Cloze cards
-- Better prompts — the current ones still allow the occasional yes/no card
 - PDF input
 - A small web UI
 
