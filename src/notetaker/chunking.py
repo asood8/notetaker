@@ -43,13 +43,13 @@ def chunk_markdown(text: str, max_chars: int = DEFAULT_MAX_CHARS) -> list[Chunk]
 def _split_sections(text: str) -> list[tuple[tuple[str, ...], str]]:
     """Walk the document, tracking the heading stack. Fenced code is left alone."""
     sections: list[tuple[tuple[str, ...], str]] = []
-    stack: list[str] = []
+    stack: list[tuple[int, str]] = []
     body: list[str] = []
     in_fence = False
 
     def flush() -> None:
         if body:
-            sections.append((tuple(stack), "\n".join(body)))
+            sections.append((tuple(title for _, title in stack), "\n".join(body)))
             body.clear()
 
     for line in text.splitlines():
@@ -65,8 +65,13 @@ def _split_sections(text: str) -> list[tuple[tuple[str, ...], str]]:
 
         flush()
         level = len(heading.group(1))
-        del stack[level - 1 :]
-        stack.append(heading.group(2).strip())
+        # Pop every heading at this level or deeper. Tracking the real levels
+        # rather than indexing by depth matters for documents whose top
+        # heading is not `#` -- text extracted from a PDF, most of all. Index
+        # arithmetic would nest every sibling under the first heading seen.
+        while stack and stack[-1][0] >= level:
+            stack.pop()
+        stack.append((level, heading.group(2).strip()))
 
     flush()
     return sections

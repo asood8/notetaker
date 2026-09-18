@@ -130,6 +130,20 @@ are ones worth reviewing.
 Basic cards remain the better default. Cloze is worth it when your notes are
 already written as complete, factual sentences.
 
+## PDFs need layout-mode extraction
+
+`pypdf`'s default extraction drops the blank lines between paragraphs. A whole
+page comes back as one unbroken block, the chunker can no longer see paragraph
+boundaries, and the model is handed run-on fragments. Passing
+`extraction_mode="layout"` keeps them, and is the difference between a PDF
+producing one shapeless chunk and producing properly tagged sections.
+
+The same work surfaced a chunker bug worth recording. Heading depth was tracked
+by list index, which assumes the document's top heading is `#`. Text recovered
+from a PDF has no `#` at all, so every sibling heading nested under the first
+one seen and whole sections were mislabelled. Heading levels are now tracked
+explicitly.
+
 ## Reproducing
 
 ```console

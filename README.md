@@ -47,7 +47,7 @@ Your markdown headings become hierarchical Anki tags, so a deck stays organized
 the way your notes already were.
 
 ```
-notetaker cards NOTES [OPTIONS]
+notetaker cards NOTES [OPTIONS]        # NOTES is .md, .txt or .pdf
 
   --out, -o PATH     Directory to write into          [default: out]
   --llm TEXT         Backend: 'ollama' or 'fake'      [default: ollama]
@@ -158,6 +158,25 @@ the cards already in Anki rather than leaving you with two near-identical copies
 of your deck. Changing a question creates a new card; changing only the answer
 updates the existing one.
 
+## PDF notes
+
+```console
+$ notetaker cards lectures/week3.pdf --deck "Bio::Week 3"
+```
+
+PDFs have no headings in the markup sense, but they usually have them visually:
+a short line on its own above a paragraph. Those are recovered and used for
+tags, the same as markdown headings, so a slide deck or lecture handout still
+comes out organized. What is not recovered is nesting — every heading found in
+a PDF is treated as a sibling, because guessing at levels from extracted text
+gets it wrong more often than not.
+
+Two things are worth knowing. Text is extracted in layout mode, which keeps the
+blank lines between paragraphs; without it a whole page collapses into one
+run-on block and the model gets fragments instead of sentences. And a scanned
+PDF with no text layer can't be read at all — there's no OCR yet, and the error
+says so rather than producing an empty deck.
+
 ## Cloze cards
 
 ```console
@@ -192,8 +211,8 @@ zero.
 
 ## Planned
 
-- PDF input
 - A small web UI
+- OCR, so scanned notes work
 
 ## License
 

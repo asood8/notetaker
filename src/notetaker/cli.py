@@ -19,6 +19,7 @@ from notetaker.generate import (
 from notetaker.llm import FakeLLM, OllamaLLM
 from notetaker.llm.base import LLMClient
 from notetaker.llm.ollama import DEFAULT_MODEL, DEFAULT_NUM_CTX, DEFAULT_TIMEOUT
+from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES, Style
 
 app = typer.Typer(
@@ -42,7 +43,7 @@ def version() -> None:
 def cards(
     notes: Annotated[
         Path,
-        typer.Argument(help="Markdown or text file to read.", exists=True, dir_okay=False),
+        typer.Argument(help="Markdown, text or PDF file to read.", exists=True, dir_okay=False),
     ],
     out: Annotated[Path, typer.Option("--out", "-o", help="Directory to write into.")] = Path(
         "out"
@@ -75,7 +76,11 @@ def cards(
     client = _build_client(backend, model=model, num_ctx=num_ctx, timeout=timeout)
     style = _build_style(card_style)
 
-    text = notes.read_text(encoding="utf-8")
+    try:
+        text = read_notes(notes)
+    except UnreadableNotes as exc:
+        typer.secho(f"  {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
     chunks = chunk_markdown(text, max_chars=chunk_chars)
     if not chunks:
         typer.secho(f"{notes} has no usable content.", fg=typer.colors.RED, err=True)
