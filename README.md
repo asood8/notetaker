@@ -136,7 +136,7 @@ than like a setting you need to change.
 ## Development
 
 ```console
-$ pip install -e ".[dev]"
+$ pip install -e ".[dev,web]"
 $ pytest                  # offline, no Ollama needed
 $ pytest -m integration   # hits a real local model
 $ ruff check . && ruff format --check .
@@ -157,6 +157,26 @@ derived from its name. That means re-running after editing your notes updates
 the cards already in Anki rather than leaving you with two near-identical copies
 of your deck. Changing a question creates a new card; changing only the answer
 updates the existing one.
+
+## A page instead of a terminal
+
+```console
+$ pip install "notetaker[web]"
+$ notetaker serve
+
+  notetaker is at http://127.0.0.1:8000
+```
+
+Drop a file on the page, pick a style and a model, and watch it work. The wait
+is the interesting part of this interface: every section of your notes is
+listed as soon as the file is read, and each one fills in with its tag and card
+count as the model finishes with it. A progress bar would tell you less.
+
+The server binds to localhost, writes only to a temporary directory it owns,
+and deletes that directory when it stops. The page itself loads no fonts,
+scripts or styles from anywhere — the point of this tool is that your notes
+stay on your machine, and a stylesheet fetched from a CDN would quietly leak
+the fact that you are using it.
 
 ## PDF notes
 
@@ -211,7 +231,6 @@ zero.
 
 ## Planned
 
-- A small web UI
 - OCR, so scanned notes work
 
 ## License

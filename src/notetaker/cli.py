@@ -130,6 +130,28 @@ def _progress(total: int) -> Callable[[Chunk, int], None]:
     return report
 
 
+@app.command()
+def serve(
+    host: Annotated[str, typer.Option("--host", help="Address to bind.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option("--port", help="Port to listen on.")] = 8000,
+) -> None:
+    """Open a local page for dropping notes onto."""
+    try:
+        import uvicorn
+
+        from notetaker.web import create_app
+    except ImportError as exc:
+        typer.secho(
+            "  The web UI needs extra packages: pip install 'notetaker[web]'",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(f"  notetaker is at http://{host}:{port}")
+    uvicorn.run(create_app(), host=host, port=port, log_level="warning")
+
+
 def _build_client(backend: str, *, model: str, num_ctx: int, timeout: float) -> LLMClient:
     if backend == "fake":
         return FakeLLM()
