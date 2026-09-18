@@ -21,6 +21,7 @@ from notetaker.chunking import chunk_markdown
 from notetaker.generate import generate_cards
 from notetaker.llm import OllamaLLM
 from notetaker.models import Card
+from notetaker.styles import STYLES
 
 DEFAULT_NOTES = Path(__file__).resolve().parent.parent / "examples" / "sample_notes.md"
 
@@ -52,6 +53,7 @@ def main() -> None:
     parser.add_argument("--notes", type=Path, default=DEFAULT_NOTES)
     parser.add_argument("--max-cards", type=int, default=8)
     parser.add_argument("--timeout", type=float, default=300.0)
+    parser.add_argument("--style", choices=sorted(STYLES), default="basic")
     parser.add_argument("--show-cards", action="store_true")
     args = parser.parse_args()
 
@@ -65,6 +67,7 @@ def main() -> None:
         result = generate_cards(
             chunks,
             OllamaLLM(model, timeout=args.timeout),
+            style=STYLES[args.style],
             max_cards_per_chunk=args.max_cards,
         )
         elapsed = time.time() - start
@@ -77,7 +80,10 @@ def main() -> None:
         rows.append((model, elapsed, result, flagged))
 
         print(f"  {elapsed:.0f}s, {len(result.cards)} cards, {result.duplicates} dup dropped")
-        print(f"  failed sections: {result.failed_chunks}, invalid: {result.invalid_responses}")
+        print(
+            f"  failed sections: {result.failed_chunks}, "
+            f"invalid: {result.invalid_responses}, dropped: {result.low_quality}"
+        )
         print(f"  flagged: {flagged}")
         if args.show_cards:
             for c in result.cards:

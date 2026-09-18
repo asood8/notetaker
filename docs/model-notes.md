@@ -97,10 +97,44 @@ The prompt still asks, because it is cheaper to have the model not generate a
 bad card than to generate and discard it. But the prompt is not what guarantees
 it.
 
+## An optional schema field is an escape hatch
+
+`llama3.1:8b` answered the cloze prompt with a bare `{}`. The batch model gave
+`cards` a default, so that validated cleanly as "zero cards" and the run
+reported success having produced nothing. Silent, and the worst kind of bug.
+
+Making `cards` a required field was supposed to turn that into a counted
+invalid response. It did something better: the same model went from **0 cards
+to 11**. The field is required in the JSON schema now, and Ollama constrains
+decoding against that schema, so `{}` is no longer a reachable output. The
+model had been taking the cheapest path the grammar allowed.
+
+The lesson generalizes. Anything optional in a schema handed to a
+grammar-constrained model is a way out that some model will eventually take.
+
+## Cloze is harder than basic
+
+Cloze quality is visibly worse than question-and-answer at this model size.
+Real output from `llama3.2` before the cloze filters existed:
+
+> The Krebs cycle is a series of reactions in the {{c1::mitochondrial matrix}} that
+
+> Osmosis: the movement of water ... involving {{c1::osmosis}}
+
+The first stops mid-clause. The second hides a word printed in plain sight two
+inches to the left. Both are now rejected by rules in `quality.py`, along with
+deletions that swallow the whole sentence. On the sample notes those filters
+drop five to nine cards per run, which is a lot -- but the cards that survive
+are ones worth reviewing.
+
+Basic cards remain the better default. Cloze is worth it when your notes are
+already written as complete, factual sentences.
+
 ## Reproducing
 
 ```console
 $ python scripts/compare_models.py --models <model> [<model> ...] --show-cards
+$ python scripts/compare_models.py --models llama3.2 --style cloze --show-cards
 ```
 
 The script counts what can be counted — time, schema failures, yes/no

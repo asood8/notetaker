@@ -104,3 +104,18 @@ def test_the_fake_backend_produces_cards_from_real_notes() -> None:
 def test_responses_that_do_not_match_the_schema_are_rejected(payload: Any) -> None:
     result = generate_cards(chunks("a"), StubLLM(payload))
     assert result.cards == []
+
+
+def test_a_bare_empty_object_is_an_invalid_response_not_a_silent_zero() -> None:
+    # llama3.1:8b answers `{}` to the cloze prompt. When `cards` had a default
+    # this validated as "zero cards" and the run claimed success.
+    result = generate_cards(chunks("a"), StubLLM({}))
+    assert result.cards == []
+    assert result.invalid_responses == 1
+
+
+def test_an_explicitly_empty_card_list_is_accepted() -> None:
+    # A model is allowed to say a passage has nothing worth memorizing.
+    result = generate_cards(chunks("a"), StubLLM({"cards": []}))
+    assert result.cards == []
+    assert result.invalid_responses == 0

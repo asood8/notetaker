@@ -10,9 +10,10 @@ from pydantic import ValidationError
 from notetaker.chunking import Chunk
 from notetaker.dedup import Deduper
 from notetaker.llm.base import LLMClient, LLMError
-from notetaker.models import Card, CardBatch
+from notetaker.models import Card
 from notetaker.prompts import build_prompt
 from notetaker.quality import rejection_reason
+from notetaker.styles import BASIC, Style
 
 DEFAULT_MAX_CARDS_PER_CHUNK = 8
 
@@ -32,6 +33,7 @@ def generate_cards(
     chunks: Iterable[Chunk],
     client: LLMClient,
     *,
+    style: Style = BASIC,
     max_cards_per_chunk: int = DEFAULT_MAX_CARDS_PER_CHUNK,
     extra_tags: Iterable[str] = (),
     on_chunk: Callable[[Chunk, int], None] | None = None,
@@ -44,28 +46,35 @@ def generate_cards(
     result = GenerationResult()
     deduper = Deduper()
     shared_tags = list(extra_tags)
+    schema = style.batch.model_json_schema()
 
     for chunk in chunks:
-        system, user = build_prompt(chunk, max_cards_per_chunk)
+        system, user = build_prompt(
+            chunk,
+            max_cards_per_chunk,
+            system=style.system,
+            template=style.template,
+        )
 
         try:
-            raw = client.complete(system, user, CardBatch.model_json_schema())
+            raw = client.complete(system, user, schema)
         except LLMError:
             result.failed_chunks += 1
-            if on_chunk is not None:
-                on_chunk(chunk, 0)
+            _report(on_chunk, chunk, 0)
             continue
 
         try:
-            batch = CardBatch.model_validate(raw)
+            batch = style.batch.model_validate(raw)
         except ValidationError:
             result.invalid_responses += 1
-            if on_chunk is not None:
-                on_chunk(chunk, 0)
+            _report(on_chunk, chunk, 0)
             continue
 
+        cards = style.to_cards(batch)
+        result.low_quality += len(batch.cards) - len(cards)
+
         added = 0
-        for card in batch.cards[:max_cards_per_chunk]:
+        for card in cards[:max_cards_per_chunk]:
             if rejection_reason(card) is not None:
                 result.low_quality += 1
                 continue
@@ -76,10 +85,14 @@ def generate_cards(
             result.cards.append(card)
             added += 1
 
-        if on_chunk is not None:
-            on_chunk(chunk, added)
+        _report(on_chunk, chunk, added)
 
     return result
+
+
+def _report(on_chunk: Callable[[Chunk, int], None] | None, chunk: Chunk, added: int) -> None:
+    if on_chunk is not None:
+        on_chunk(chunk, added)
 
 
 def _tags_for(chunk: Chunk, extra: list[str]) -> list[str]:

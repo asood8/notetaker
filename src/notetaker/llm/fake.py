@@ -30,17 +30,44 @@ class FakeLLM:
         self.max_cards = max_cards
 
     def complete(self, system: str, user: str, schema: dict[str, Any]) -> dict[str, Any]:
+        build = _to_cloze if wants_cloze(schema) else _to_card
         cards: list[dict[str, str]] = []
 
         for line in _logical_lines(extract_notes(user)):
             for sentence in SENTENCE_RE.split(line):
                 if len(cards) >= self.max_cards:
                     return {"cards": cards}
-                card = _to_card(sentence.strip())
+                card = build(sentence.strip())
                 if card is not None:
                     cards.append(card)
 
         return {"cards": cards}
+
+
+def wants_cloze(schema: dict[str, Any]) -> bool:
+    """Read the requested card style off the schema the caller passed."""
+    return "ClozeDraft" in schema.get("$defs", {})
+
+
+def _to_cloze(sentence: str) -> dict[str, str] | None:
+    """Hide the defined term, leaving the definition visible as the cue."""
+    colon = COLON_RE.match(sentence)
+    if colon is not None:
+        term, definition = colon.group(1).strip(), _tidy(colon.group(2))
+        return {"text": _hide(term) + " is " + definition + "."}
+
+    definition = DEFINITION_RE.match(sentence)
+    if definition is not None:
+        term = definition.group(1).strip()
+        verb = definition.group(2).lower()
+        rest = _tidy(definition.group(3))
+        return {"text": _hide(term) + " " + verb + " " + rest + "."}
+
+    return None
+
+
+def _hide(text: str) -> str:
+    return "{{c1::" + text + "}}"
 
 
 def _logical_lines(notes: str) -> list[str]:

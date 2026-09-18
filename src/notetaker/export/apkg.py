@@ -16,10 +16,11 @@ from pathlib import Path
 
 import genanki
 
-from notetaker.models import Card
+from notetaker.models import Card, CardType
 
 MODEL_ID = 1_607_392_319
-"""Fixed: this note type is part of the tool, so it must not change between runs."""
+CLOZE_MODEL_ID = 1_607_392_320
+"""Fixed: these note types are part of the tool, so they must not change between runs."""
 
 MAX_ID = 2**31 - 1
 
@@ -48,6 +49,28 @@ MODEL = genanki.Model(
     css=CSS,
 )
 
+CLOZE_CSS = (
+    CSS
+    + """\
+.cloze { font-weight: bold; color: #0b5d3b; }
+"""
+)
+
+CLOZE_MODEL = genanki.Model(
+    CLOZE_MODEL_ID,
+    "notetaker Cloze",
+    fields=[{"name": "Text"}, {"name": "Back Extra"}],
+    templates=[
+        {
+            "name": "Cloze",
+            "qfmt": "{{cloze:Text}}",
+            "afmt": '{{cloze:Text}}<br><div class="answer">{{Back Extra}}</div>',
+        }
+    ],
+    css=CLOZE_CSS,
+    model_type=genanki.Model.CLOZE,
+)
+
 
 def write_apkg(cards: Sequence[Card], path: Path, deck_name: str) -> Path:
     """Write `cards` to `path` as an Anki deck package."""
@@ -57,7 +80,7 @@ def write_apkg(cards: Sequence[Card], path: Path, deck_name: str) -> Path:
     for card in cards:
         deck.add_note(
             genanki.Note(
-                model=MODEL,
+                model=_model_for(card),
                 fields=[card.question, card.answer],
                 tags=list(card.tags),
                 guid=genanki.guid_for(card.question),
@@ -66,6 +89,10 @@ def write_apkg(cards: Sequence[Card], path: Path, deck_name: str) -> Path:
 
     genanki.Package(deck).write_to_file(str(path))
     return path
+
+
+def _model_for(card: Card) -> genanki.Model:
+    return CLOZE_MODEL if card.card_type is CardType.CLOZE else MODEL
 
 
 def stable_id(text: str) -> int:

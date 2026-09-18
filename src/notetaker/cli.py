@@ -19,6 +19,7 @@ from notetaker.generate import (
 from notetaker.llm import FakeLLM, OllamaLLM
 from notetaker.llm.base import LLMClient
 from notetaker.llm.ollama import DEFAULT_MODEL, DEFAULT_NUM_CTX, DEFAULT_TIMEOUT
+from notetaker.styles import STYLES, Style
 
 app = typer.Typer(
     help="Turn notes into Anki flashcards using a local LLM.",
@@ -50,6 +51,9 @@ def cards(
         str, typer.Option("--llm", help="Model backend: 'ollama' or 'fake'.")
     ] = "ollama",
     model: Annotated[str, typer.Option("--model", help="Ollama model tag.")] = DEFAULT_MODEL,
+    card_style: Annotated[
+        str, typer.Option("--style", help="Card style: 'basic' or 'cloze'.")
+    ] = "basic",
     max_cards: Annotated[
         int, typer.Option("--max-cards", help="Cards per section.")
     ] = DEFAULT_MAX_CARDS_PER_CHUNK,
@@ -69,6 +73,7 @@ def cards(
 ) -> None:
     """Generate flashcards from a notes file."""
     client = _build_client(backend, model=model, num_ctx=num_ctx, timeout=timeout)
+    style = _build_style(card_style)
 
     text = notes.read_text(encoding="utf-8")
     chunks = chunk_markdown(text, max_chars=chunk_chars)
@@ -78,11 +83,13 @@ def cards(
 
     typer.echo(f"  reading   {notes}  ({len(chunks)} sections, {len(text)} chars)")
     typer.echo(f"  model     {client.name}")
+    typer.echo(f"  style     {style.name}")
     typer.echo("")
 
     result = generate_cards(
         chunks,
         client,
+        style=style,
         max_cards_per_chunk=max_cards,
         extra_tags=tag or [],
         on_chunk=_progress(len(chunks)),
@@ -124,6 +131,14 @@ def _build_client(backend: str, *, model: str, num_ctx: int, timeout: float) -> 
     if backend == "ollama":
         return OllamaLLM(model, num_ctx=num_ctx, timeout=timeout)
     raise typer.BadParameter(f"unknown backend {backend!r}; expected 'ollama' or 'fake'")
+
+
+def _build_style(name: str) -> Style:
+    try:
+        return STYLES[name]
+    except KeyError:
+        expected = " or ".join(repr(key) for key in STYLES)
+        raise typer.BadParameter(f"unknown style {name!r}; expected {expected}") from None
 
 
 def _report_failures(result: GenerationResult) -> None:

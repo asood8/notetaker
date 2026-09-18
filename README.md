@@ -52,6 +52,7 @@ notetaker cards NOTES [OPTIONS]
   --out, -o PATH     Directory to write into          [default: out]
   --llm TEXT         Backend: 'ollama' or 'fake'      [default: ollama]
   --model TEXT       Ollama model tag                 [default: llama3.2]
+  --style TEXT       Card style: 'basic' or 'cloze'   [default: basic]
   --max-cards INT    Cards per section                [default: 8]
   --chunk-chars INT  Characters of notes per call     [default: 4000]
   --num-ctx INT      Context window, in tokens        [default: 8192]
@@ -157,6 +158,24 @@ the cards already in Anki rather than leaving you with two near-identical copies
 of your deck. Changing a question creates a new card; changing only the answer
 updates the existing one.
 
+## Cloze cards
+
+```console
+$ notetaker cards notes/bio-ch3.md --style cloze
+```
+
+Instead of question-and-answer pairs you get sentences with the key term
+hidden, which Anki turns into fill-in-the-blank cards:
+
+> Glycolysis is the breakdown of one glucose molecule into two molecules of
+> {{c1::pyruvate}}, taking place in the cytoplasm.
+
+Basic cards are still the default. Cloze asks more of the model, and small ones
+produce a fair number of unusable sentences — hiding a word that is printed
+again in the same sentence, or stopping mid-clause. Those are filtered out, but
+the filter throws away real work, so expect fewer cards per section than you get
+with `--style basic`. Cloze suits notes already written as complete sentences.
+
 ## Card quality
 
 Two things are dropped automatically. Cards that duplicate an earlier one are
@@ -173,7 +192,6 @@ zero.
 
 ## Planned
 
-- Cloze cards
 - PDF input
 - A small web UI
 
