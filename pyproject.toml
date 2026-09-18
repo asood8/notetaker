@@ -35,9 +35,10 @@ dev = [
     "fastapi>=0.110",
     "python-multipart>=0.0.9",
     "pypdfium2>=4.30",
+    "pillow>=10",
 ]
 web = ["fastapi>=0.110", "uvicorn>=0.27", "python-multipart>=0.0.9"]
-ocr = ["pypdfium2>=4.30"]
+ocr = ["pypdfium2>=4.30", "pillow>=10"]
 
 [project.scripts]
 notetaker = "notetaker.cli:app"

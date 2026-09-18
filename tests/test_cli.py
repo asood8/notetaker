@@ -128,3 +128,95 @@ def test_no_warning_for_a_plain_model(tmp_path: Path) -> None:
         app, ["cards", str(notes), "--llm", "fake", "--out", str(tmp_path / "out")]
     )
     assert "reasons before answering" not in result.output
+
+
+# --- looking at a file before committing to a run ----------------------------
+
+
+def test_inspect_lists_each_section_with_its_tag(tmp_path: Path) -> None:
+    notes = tmp_path / "bio.md"
+    notes.write_text(
+        "# Biology\n\n## Transport\n\nOsmosis moves water.\n\n## Glycolysis\n\nIt makes ATP.\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(app, ["inspect", str(notes)])
+
+    assert result.exit_code == 0
+    assert "Biology::Transport" in result.output
+    assert "Biology::Glycolysis" in result.output
+    assert "2 sections" in result.output
+
+
+def test_inspect_estimates_how_long_a_run_will_take(tmp_path: Path) -> None:
+    notes = write_notes(tmp_path)
+    result = runner.invoke(app, ["inspect", str(notes)])
+    assert "estimate" in result.output
+
+
+def test_inspect_warns_about_sections_with_no_heading(tmp_path: Path) -> None:
+    notes = tmp_path / "loose.md"
+    notes.write_text("Osmosis is the diffusion of water across a membrane.\n", encoding="utf-8")
+
+    result = runner.invoke(app, ["inspect", str(notes)])
+
+    assert "untagged" in result.output
+    assert "--tag" in result.output
+
+
+def test_inspect_truncates_a_very_long_list(tmp_path: Path) -> None:
+    notes = tmp_path / "big.md"
+    body = "".join(f"## Section {n}\n\nSome content about topic {n}.\n\n" for n in range(45))
+    notes.write_text(body, encoding="utf-8")
+
+    result = runner.invoke(app, ["inspect", str(notes)])
+
+    assert "and 15 more" in result.output
+
+
+def test_inspect_never_calls_a_model(tmp_path: Path) -> None:
+    # No --llm option exists on inspect at all; it is a read-only look at the file.
+    notes = write_notes(tmp_path)
+    result = runner.invoke(app, ["inspect", str(notes), "--chunk-chars", "100"])
+    assert result.exit_code == 0
+
+
+def test_inspect_reports_an_empty_file(tmp_path: Path) -> None:
+    notes = tmp_path / "empty.md"
+    notes.write_text("   \n", encoding="utf-8")
+    result = runner.invoke(app, ["inspect", str(notes)])
+    assert result.exit_code == 1
+
+
+def test_limit_uses_only_the_first_sections(tmp_path: Path) -> None:
+    notes = tmp_path / "big.md"
+    body = "".join(f"## Section {n}\n\nOsmosis is the diffusion of water.\n\n" for n in range(6))
+    notes.write_text(body, encoding="utf-8")
+    out = tmp_path / "out"
+
+    result = runner.invoke(
+        app, ["cards", str(notes), "--llm", "fake", "--limit", "2", "--out", str(out)]
+    )
+
+    assert result.exit_code == 0
+    assert "using 2 of 6 sections" in result.output
+    assert "[2/2]" in result.output
+    assert "[3/" not in result.output
+
+
+def test_a_limit_larger_than_the_document_changes_nothing(tmp_path: Path) -> None:
+    notes = write_notes(tmp_path)
+    out = tmp_path / "out"
+    result = runner.invoke(
+        app, ["cards", str(notes), "--llm", "fake", "--limit", "99", "--out", str(out)]
+    )
+    assert result.exit_code == 0
+    assert "using" not in result.output
+
+
+def test_durations_read_naturally() -> None:
+    from notetaker.cli import _duration, estimate
+
+    assert _duration(45) == "45s"
+    assert _duration(600) == "10 min"
+    assert "to" in estimate(4)

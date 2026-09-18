@@ -59,7 +59,34 @@ notetaker cards NOTES [OPTIONS]        # NOTES is .md, .txt or .pdf
   --timeout FLOAT    Seconds to wait per call         [default: 180]
   --deck TEXT        Anki deck name                   [default: file name]
   --tag TEXT         Extra tag; repeatable
+  --limit INT        Only use the first N sections
 ```
+
+### Looking before you leap
+
+A long set of notes takes a while, so it is worth seeing what you are in for:
+
+```console
+$ notetaker inspect lectures/neuro301.md
+
+  reading   lectures/neuro301.md  (9 sections, 11,595 chars)
+
+  [  1] Neuroscience_301                                 54 chars
+  [  2] Neuroscience_301::Resting_Potential           1,678 chars
+  [  3] Neuroscience_301::Action_Potentials             537 chars
+  ...
+
+  largest   2,492 chars
+  estimate  roughly 2 min to 5 min to generate
+```
+
+`inspect` never calls a model. It shows how the file will be split, what each
+section will be tagged, and warns about sections with no heading above them,
+whose cards will carry no tags of their own. If the split looks wrong, adjust
+`--chunk-chars` before spending twenty minutes on a run.
+
+For a first pass at something long, `--limit 3` generates from the first three
+sections only, so you can look at the cards before committing to the rest.
 
 Notes are split at heading boundaries, and any section too large for the
 context window is split again at paragraph boundaries. Duplicate questions are
