@@ -378,15 +378,29 @@
         return;
       }
       select.innerHTML = "";
-      data.models.forEach((name) => {
+      data.models.forEach((model) => {
         const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        if (name.startsWith(data.default)) option.selected = true;
+        option.value = model.name;
+        option.textContent = model.slow ? model.name + " (very slow here)" : model.name;
+        option.dataset.slow = model.slow ? "yes" : "no";
+        if (model.name.startsWith(data.default)) option.selected = true;
         select.appendChild(option);
       });
+      select.addEventListener("change", warnAboutModel);
+      warnAboutModel();
     })
     .catch(() => { backend = "fake"; });
+
+  function warnAboutModel() {
+    const select = el("model");
+    const option = select.options[select.selectedIndex];
+    const slow = option && option.dataset.slow === "yes";
+    hint.textContent = slow
+      ? option.value +
+        " reasons at length before answering, which takes minutes per section here. " +
+        "A plain instruct model such as llama3.2 is far quicker and writes better cards."
+      : "";
+  }
 
   function showError(message) {
     errorBox.textContent = message;

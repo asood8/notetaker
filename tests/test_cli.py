@@ -110,3 +110,21 @@ def test_tags_with_spaces_are_made_safe_for_anki(tmp_path: Path) -> None:
     assert result.exit_code == 0
     tags = (out / "bio.tsv").read_text(encoding="utf-8").splitlines()[4].split("\t")[2]
     assert "bio_101" in tags
+
+
+def test_a_reasoning_model_is_warned_about(tmp_path: Path, monkeypatch) -> None:
+    notes = write_notes(tmp_path)
+    # The run itself never happens: the warning is printed before any request.
+    result = runner.invoke(
+        app,
+        ["cards", str(notes), "--model", "qwen3.5:9b", "--timeout", "0.01"],
+    )
+    assert "reasons before answering" in result.output
+
+
+def test_no_warning_for_a_plain_model(tmp_path: Path) -> None:
+    notes = write_notes(tmp_path)
+    result = runner.invoke(
+        app, ["cards", str(notes), "--llm", "fake", "--out", str(tmp_path / "out")]
+    )
+    assert "reasons before answering" not in result.output

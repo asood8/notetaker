@@ -18,7 +18,12 @@ from notetaker.generate import (
 )
 from notetaker.llm import FakeLLM, OllamaLLM
 from notetaker.llm.base import LLMClient
-from notetaker.llm.ollama import DEFAULT_MODEL, DEFAULT_NUM_CTX, DEFAULT_TIMEOUT
+from notetaker.llm.ollama import (
+    DEFAULT_MODEL,
+    DEFAULT_NUM_CTX,
+    DEFAULT_TIMEOUT,
+    is_reasoning_model,
+)
 from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES, Style
 
@@ -89,6 +94,12 @@ def cards(
     typer.echo(f"  reading   {notes}  ({len(chunks)} sections, {len(text)} chars)")
     typer.echo(f"  model     {client.name}")
     typer.echo(f"  style     {style.name}")
+    if backend == "ollama" and is_reasoning_model(model):
+        typer.secho(
+            f"  warning   {model} reasons before answering and takes minutes"
+            " per section. Try --model llama3.2 instead.",
+            fg=typer.colors.YELLOW,
+        )
     typer.echo("")
 
     result = generate_cards(

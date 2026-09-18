@@ -122,3 +122,21 @@ def test_the_name_identifies_the_model() -> None:
 def test_the_host_can_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OLLAMA_HOST", "http://box:9999/")
     assert OllamaLLM("llama3.2").host == "http://box:9999"
+
+
+@pytest.mark.parametrize(
+    "name", ["deepseek-r1:8b", "qwen3.5:9b", "qwen3.5:0.8B", "qwq:32b", "QWEN3.5:4b"]
+)
+def test_reasoning_models_are_recognized(name: str) -> None:
+    from notetaker.llm.ollama import is_reasoning_model
+
+    assert is_reasoning_model(name)
+
+
+@pytest.mark.parametrize(
+    "name", ["llama3.2", "llama3.1:8b", "phi4-mini:3.8b", "qwen2.5-coder:7b", "qwen2.5vl:3b"]
+)
+def test_plain_instruct_models_are_not_flagged(name: str) -> None:
+    from notetaker.llm.ollama import is_reasoning_model
+
+    assert not is_reasoning_model(name)

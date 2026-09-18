@@ -34,6 +34,28 @@ DEFAULT_SEED = 7
 
 THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 
+REASONING_MODELS = (
+    "deepseek-r1",
+    "qwen3",
+    "qwq",
+    "magistral",
+    "exaone-deep",
+    "phi4-reasoning",
+)
+"""Families that reason before answering, which makes them unusable here.
+
+`deepseek-r1` and the `qwen3.5` line were measured: over 280 seconds for a
+single short section, on an already-loaded model. The rest are listed because
+they work the same way, not because they were timed. This only ever drives a
+warning -- nothing is blocked on it.
+"""
+
+
+def is_reasoning_model(name: str) -> bool:
+    """Whether `name` looks like a model that thinks at length before answering."""
+    return name.lower().startswith(REASONING_MODELS)
+
+
 REPAIR = (
     "That was not valid JSON. Reply with the JSON object only, "
     "with no commentary, markdown, or code fences."

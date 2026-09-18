@@ -42,6 +42,43 @@ def finish(client, job_id: str, timeout: float = 10.0) -> dict:
     raise AssertionError("the job never finished")
 
 
+def test_reasoning_models_are_flagged_as_slow(client, monkeypatch) -> None:
+    import httpx
+
+    class Response:
+        status_code = 200
+
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict:
+            return {
+                "models": [
+                    {"name": "llama3.2:latest"},
+                    {"name": "qwen3.5:9b"},
+                    {"name": "deepseek-r1:8b"},
+                ]
+            }
+
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: Response())
+
+    models = {entry["name"]: entry["slow"] for entry in client.get("/api/models").json()["models"]}
+    assert models == {"llama3.2:latest": False, "qwen3.5:9b": True, "deepseek-r1:8b": True}
+
+
+def test_no_models_reported_when_ollama_is_down(client, monkeypatch) -> None:
+    import httpx
+
+    def refuse(*args, **kwargs):
+        raise httpx.ConnectError("refused")
+
+    monkeypatch.setattr(httpx, "get", refuse)
+
+    body = client.get("/api/models").json()
+    assert body["available"] is False
+    assert body["models"] == []
+
+
 def test_the_page_is_served(client) -> None:
     response = client.get("/")
     assert response.status_code == 200

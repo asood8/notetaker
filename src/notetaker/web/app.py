@@ -29,7 +29,7 @@ from notetaker.chunking import DEFAULT_MAX_CHARS, chunk_markdown
 from notetaker.export import write_apkg, write_tsv
 from notetaker.generate import DEFAULT_MAX_CARDS_PER_CHUNK, generate_cards
 from notetaker.llm import FakeLLM, OllamaLLM
-from notetaker.llm.ollama import DEFAULT_MODEL
+from notetaker.llm.ollama import DEFAULT_MODEL, is_reasoning_model
 from notetaker.models import Card
 from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES
@@ -136,7 +136,9 @@ def create_app() -> FastAPI:
             names = [model["name"] for model in response.json().get("models", [])]
         except Exception:
             return {"available": False, "models": [], "default": DEFAULT_MODEL}
-        return {"available": True, "models": sorted(names), "default": DEFAULT_MODEL}
+
+        models = [{"name": name, "slow": is_reasoning_model(name)} for name in sorted(names)]
+        return {"available": True, "models": models, "default": DEFAULT_MODEL}
 
     @app.post("/api/jobs")
     async def start(
