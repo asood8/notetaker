@@ -172,3 +172,125 @@ def test_headings_recovered_from_a_pdf_become_tags(tmp_path: Path) -> None:
 
     chunks = chunk_markdown(read_notes(path))
     assert [chunk.tag for chunk in chunks] == ["Transport"]
+
+
+# --- page furniture ----------------------------------------------------------
+
+# Deliberately varied wording. Lines that differ only by a number collapse to
+# the same key by design, so fixtures must differ in words to prove anything.
+TOPICS = [
+    "membranes",
+    "glycolysis",
+    "mitosis",
+    "telomeres",
+    "enzymes",
+    "ribosomes",
+    "plasmids",
+    "codons",
+    "introns",
+    "histones",
+    "vesicles",
+    "cytoskeletons",
+]
+
+
+def test_a_footer_on_many_pages_is_recognized() -> None:
+    from notetaker.reader import repeated_lines
+
+    pages = [f"Dr. Sollars\nThe study of {topic} matters here." for topic in TOPICS]
+    furniture = repeated_lines(pages)
+
+    assert "dr. sollars" in furniture
+    assert not any(topic in key for key in furniture for topic in TOPICS)
+
+
+def test_numbering_is_collapsed_so_slide_lines_match() -> None:
+    from notetaker.reader import furniture_key, repeated_lines
+
+    assert furniture_key("Slide 4") == furniture_key("Slide 5") == "slide #"
+    pages = [f"Slide {n}\nSomething different on page {n} entirely." for n in range(12)]
+    assert "slide #" in repeated_lines(pages)
+
+
+def test_a_footer_on_a_minority_of_pages_is_still_furniture() -> None:
+    # Real notes were several courses bound together: one lecturer's footer
+    # covered 93 pages out of 588, and a proportional threshold missed it.
+    from notetaker.reader import repeated_lines
+
+    pages = [f"Dr. Sollars\nContent {n}." for n in range(20)]
+    pages += [f"Dr. Verma\nOther content {n}." for n in range(80)]
+
+    furniture = repeated_lines(pages)
+    assert "dr. sollars" in furniture
+    assert "dr. verma" in furniture
+
+
+def test_a_line_appearing_once_is_never_furniture() -> None:
+    from notetaker.reader import repeated_lines
+
+    pages = [f"About {topic}\nThe role of {topic} in the cell." for topic in TOPICS]
+    assert repeated_lines(pages) == set()
+
+
+def test_lines_differing_only_by_a_number_are_treated_as_furniture() -> None:
+    # A consequence of collapsing digits, and the right call: "Lecture 3" and
+    # "Lecture 4" are page furniture, not two different facts.
+    from notetaker.reader import repeated_lines
+
+    pages = [f"Lecture {n}\nThe role of {topic} in the cell." for n, topic in enumerate(TOPICS)]
+    assert "lecture #" in repeated_lines(pages)
+
+
+def test_very_short_documents_are_left_alone() -> None:
+    from notetaker.reader import repeated_lines
+
+    assert repeated_lines(["Header\nOne.", "Header\nTwo."]) == set()
+
+
+def test_furniture_is_removed_from_the_page() -> None:
+    from notetaker.reader import strip_furniture
+
+    page = "Dr. Sollars\nOsmosis is the diffusion of water."
+    assert strip_furniture(page, {"dr. sollars"}) == "Osmosis is the diffusion of water."
+
+
+def test_stripping_nothing_leaves_the_page_untouched() -> None:
+    from notetaker.reader import strip_furniture
+
+    assert strip_furniture("Some text.", set()) == "Some text."
+
+
+def test_a_repeated_footer_does_not_become_a_heading(tmp_path: Path) -> None:
+    """The whole point: a footer that looks like a heading must not become one."""
+    pdf = FPDF()
+    pdf.set_font("helvetica", size=12)
+    for topic in TOPICS:
+        pdf.add_page()
+        pdf.multi_cell(0, 8, "Dr. Sollars")
+        pdf.ln(3)
+        pdf.multi_cell(0, 8, f"The study of {topic} explains how transport works.")
+    path = tmp_path / "lectures.pdf"
+    pdf.output(str(path))
+
+    text = read_notes(path)
+
+    assert "## Dr. Sollars" not in text
+    assert "Dr. Sollars" not in text
+    assert "The study of membranes" in text
+
+
+def test_notices_are_reported_to_the_caller(tmp_path: Path) -> None:
+    pdf = FPDF()
+    pdf.set_font("helvetica", size=12)
+    for topic in TOPICS:
+        pdf.add_page()
+        pdf.multi_cell(0, 8, "Dr. Sollars")
+        pdf.ln(3)
+        pdf.multi_cell(0, 8, f"The behaviour of {topic} is examined closely here.")
+    path = tmp_path / "lectures.pdf"
+    pdf.output(str(path))
+
+    notices: list[str] = []
+    read_notes(path, on_notice=notices.append)
+
+    assert any("repeated across pages" in notice for notice in notices)

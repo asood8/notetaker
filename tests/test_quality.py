@@ -66,3 +66,47 @@ def test_a_normal_length_answer_is_kept() -> None:
 def test_a_word_merely_starting_with_an_auxiliary_is_not_rejected() -> None:
     # "Doesn't" is a contraction, but "Isotopes" must not trip the `is` rule.
     assert rejection_reason(card("Isotopes of carbon differ in what way?")) is None
+
+
+# --- failures found on real lecture notes ------------------------------------
+
+
+@pytest.mark.parametrize("answer", ["Unknown", "unclear", "N/A", "None", "not specified"])
+def test_a_non_answer_is_rejected(answer: str) -> None:
+    assert rejection_reason(card("What is the focus of this handout?", answer)) is not None
+
+
+def test_a_truncated_one_word_answer_is_rejected() -> None:
+    # Real output: "What is the main focus of biochemical genetics? -> how"
+    assert rejection_reason(card("What is biochemical genetics?", "how")) == "no real answer"
+
+
+@pytest.mark.parametrize("answer", ["Two", "ATP", "X", "10-12%", "Pyruvate"])
+def test_short_but_real_answers_are_kept(answer: str) -> None:
+    assert rejection_reason(card("How many, or what, is it?", answer)) is None
+
+
+def test_a_card_that_answers_itself_is_rejected() -> None:
+    # Real output from a slide on the history of genetics.
+    question = "Which movement of the 1900s was based on eugenics?"
+    assert rejection_reason(card(question, "Eugenics")) == "answer is in the question"
+
+
+def test_a_shared_word_is_not_treated_as_a_giveaway() -> None:
+    question = "What is the study of the structure and function of genes?"
+    assert rejection_reason(card(question, "Molecular genetics")) is None
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What is the focus of this handout?",
+        "What does this lecture cover?",
+        "What is shown on this slide?",
+        "What does the handout say about genetics?",
+    ],
+)
+def test_questions_about_the_teaching_material_are_rejected(question: str) -> None:
+    # The answer deliberately shares no word with the question, so this tests
+    # the meta rule rather than the one about a card answering itself.
+    assert rejection_reason(card(question, "Several subjects")) == "question about the document"

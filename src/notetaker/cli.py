@@ -118,7 +118,7 @@ def cards(
 
     try:
         reader = _ocr_reader(ocr_model, ocr_dpi, ocr_timeout) if ocr else None
-        text = read_notes(notes, ocr=reader)
+        text = read_notes(notes, ocr=reader, on_notice=_notice)
     except (UnreadableNotes, OcrError) as exc:
         typer.secho(f"  {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
@@ -197,7 +197,8 @@ def inspect(
     there are, what they will be tagged, and how long it is likely to take.
     """
     try:
-        text = read_notes(notes, ocr=_ocr_reader(ocr_model, DEFAULT_DPI, 300.0) if ocr else None)
+        reader = _ocr_reader(ocr_model, DEFAULT_DPI, 300.0) if ocr else None
+        text = read_notes(notes, ocr=reader, on_notice=_notice)
     except (UnreadableNotes, OcrError) as exc:
         typer.secho(f"  {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
@@ -286,6 +287,11 @@ def _build_client(backend: str, *, model: str, num_ctx: int, timeout: float) -> 
     if backend == "ollama":
         return OllamaLLM(model, num_ctx=num_ctx, timeout=timeout)
     raise typer.BadParameter(f"unknown backend {backend!r}; expected 'ollama' or 'fake'")
+
+
+def _notice(message: str) -> None:
+    """Something the reader had to work around, worth knowing but not fatal."""
+    typer.secho(f"  note      {message}", fg=typer.colors.YELLOW)
 
 
 def _ocr_reader(model: str, dpi: int, timeout: float) -> Callable[[Path], str]:

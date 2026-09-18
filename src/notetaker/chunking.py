@@ -13,6 +13,17 @@ SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
 DEFAULT_MAX_CHARS = 4000
 """Roughly 1k tokens. Small enough that an 8B model keeps the whole chunk in view."""
 
+MIN_SECTION_CHARS = 10
+"""Below this there is no fact to find, only a model call to pay for.
+
+Slide decks produce these constantly: the title becomes the heading and what
+is left beneath it is a stray character or two. Real lecture notes had
+sections of one and two characters.
+
+Kept deliberately low. "Atoms bond." is eleven characters and is a real,
+if terse, fact; anything that would discard it is too eager.
+"""
+
 
 @dataclass(frozen=True)
 class Chunk:
@@ -27,12 +38,16 @@ class Chunk:
         return "::".join(_slug(part) for part in self.heading_path)
 
 
-def chunk_markdown(text: str, max_chars: int = DEFAULT_MAX_CHARS) -> list[Chunk]:
+def chunk_markdown(
+    text: str,
+    max_chars: int = DEFAULT_MAX_CHARS,
+    min_chars: int = MIN_SECTION_CHARS,
+) -> list[Chunk]:
     """Split `text` at heading boundaries, then further split anything oversized."""
     chunks: list[Chunk] = []
     for path, body in _split_sections(text):
         stripped = body.strip()
-        if not stripped:
+        if len(stripped) < min_chars:
             continue
         chunks.extend(
             Chunk(text=piece, heading_path=path) for piece in _split_to_size(stripped, max_chars)

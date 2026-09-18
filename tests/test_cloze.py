@@ -91,7 +91,8 @@ def test_drafts_without_a_deletion_are_dropped_not_fatal() -> None:
         def complete(self, system, user, schema):
             return {"cards": [{"text": "no deletion here"}, {"text": SENTENCE}]}
 
-    result = generate_cards(chunk_markdown("# Bio\n\ntext\n"), Stub(), style=CLOZE)
+    notes = "# Bio\n\nGlycolysis happens in the cytoplasm.\n"
+    result = generate_cards(chunk_markdown(notes), Stub(), style=CLOZE)
     assert len(result.cards) == 1
     assert result.low_quality == 1
 

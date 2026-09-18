@@ -25,9 +25,30 @@ AUXILIARY_RE = re.compile(
 FOLLOW_UP_RE = re.compile(r"\bif so\b|\bif not\b", re.IGNORECASE)
 BOOLEAN_ANSWER_RE = re.compile(r"^(yes|no|true|false|correct|incorrect)\b", re.IGNORECASE)
 META_RE = re.compile(
-    r"\b(this (section|document|passage|text)|the notes|the passage)\b",
+    r"\b(this (section|document|passage|text|handout|lecture|slide|chapter|course)"
+    r"|the (notes|passage|handout|lecture|slides?))\b",
     re.IGNORECASE,
 )
+NON_ANSWER_RE = re.compile(
+    r"^(unknown|unclear|n/?a|none|no answer"
+    r"|not (specified|stated|mentioned|given|provided|available|clear))\b",
+    re.IGNORECASE,
+)
+"""Answers meaning the model had nothing. They arrive looking like real cards."""
+
+PUNCTUATION_RE = re.compile(r"[^\w\s]")
+
+_FUNCTION_WORD_TEXT = (
+    "a an the and or but of in on at to for from by as with is are was were be "
+    "been this that these those how why what when where which who it its not"
+)
+FUNCTION_WORDS = frozenset(_FUNCTION_WORD_TEXT.split())
+"""A one-word answer drawn from this set is a truncation, not a fact.
+
+Real notes produced "What is the main focus of biochemical genetics? -> how".
+Short answers are otherwise fine -- "Two", "ATP" and "X" are all good cards --
+so the rule turns on the word itself, not the length.
+"""
 
 _DANGLING_TEXT = (
     "that which and or but of the a an in on to for with from by as at is are "
@@ -37,6 +58,8 @@ DANGLING_WORDS = frozenset(_DANGLING_TEXT.split())
 """Words a sentence does not end on. A cloze ending here was cut off."""
 
 MAX_ANSWER_WORDS = 40
+MIN_REVEALING_LENGTH = 4
+"""Shorter than this, a shared word is coincidence rather than a giveaway."""
 MAX_DELETION_WORDS = 8
 MIN_VISIBLE_WORDS = 3
 MAX_SENTENCE_WORDS = 60
@@ -55,6 +78,10 @@ def _basic_reason(card: Card) -> str | None:
 
     if BOOLEAN_ANSWER_RE.match(answer):
         return "yes/no answer"
+    if NON_ANSWER_RE.match(answer) or _is_a_stray_word(answer):
+        return "no real answer"
+    if _answer_sits_in_the_question(question, answer):
+        return "answer is in the question"
     if AUXILIARY_RE.match(question):
         return "yes/no question"
     if FOLLOW_UP_RE.search(question):
@@ -78,6 +105,29 @@ def _reveals_its_own_answer(card: Card, visible: list[str]) -> bool:
         for deletion in card.deletions
         if deletion.strip()
     )
+
+
+def _is_a_stray_word(answer: str) -> bool:
+    """A lone function word left behind when the model's answer was cut short."""
+    words = _normalize(answer).split()
+    return len(words) == 1 and words[0] in FUNCTION_WORDS
+
+
+def _answer_sits_in_the_question(question: str, answer: str) -> bool:
+    """Catch a card that gives itself away.
+
+    "Which movement of the 1900s was based on eugenics? -> Eugenics" is a real
+    card from a real run. The cloze rules have guarded against this from the
+    start; basic cards were simply missed.
+    """
+    normalized_answer = _normalize(answer)
+    if len(normalized_answer) < MIN_REVEALING_LENGTH:
+        return False
+    return normalized_answer in _normalize(question)
+
+
+def _normalize(text: str) -> str:
+    return " ".join(PUNCTUATION_RE.sub(" ", text.lower()).split())
 
 
 def _cloze_reason(card: Card) -> str | None:

@@ -54,9 +54,20 @@ def test_sections_without_a_heading_get_an_empty_path() -> None:
 
 
 def test_empty_sections_are_dropped() -> None:
-    chunks = chunk_markdown("# A\n\n# B\n\ncontent\n")
+    chunks = chunk_markdown("# A\n\n# B\n\nMitosis divides the nucleus.\n")
     assert len(chunks) == 1
     assert chunks[0].heading_path == ("B",)
+
+
+def test_sections_too_small_to_hold_a_fact_are_dropped() -> None:
+    # Slide decks produce these: the title becomes the heading, and a stray
+    # character is all that is left underneath it.
+    notes = "## Telomeres\n\n.\n\n## Centromeres\n\nThey join sister chromatids.\n"
+    assert [chunk.heading_path for chunk in chunk_markdown(notes)] == [("Centromeres",)]
+
+
+def test_a_terse_but_real_fact_is_kept() -> None:
+    assert len(chunk_markdown("## Bonding\n\nAtoms bond.\n")) == 1
 
 
 def test_oversized_sections_are_split_on_paragraph_boundaries() -> None:

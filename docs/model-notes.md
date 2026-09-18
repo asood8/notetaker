@@ -177,6 +177,52 @@ An image size cap is applied anyway -- pages are scaled to 1400px on the long
 edge before being sent -- because a model gains nothing from detail beyond what
 it can tokenize. It is a sensible default, not the fix for this.
 
+## What real lecture notes broke
+
+Everything above was measured on a tidy sample file written for the purpose.
+The first real input -- a 588-page compilation of medical school lecture
+slides -- broke four things that the sample never could.
+
+**A footer became a heading, 93 times.** Every slide carried the lecturer's
+name. A short unpunctuated line with prose beneath it is exactly what the
+heading detector looks for, so the deck split at every slide boundary and
+those sections were tagged `Dr_Sollars`. Removing lines that repeat across
+pages fixed it, but the first attempt still missed: the threshold was a share
+of the document, 30%, and the file turned out to be several courses bound
+together, so that lecturer's footer covered only 93 of 588 pages -- 16%, well
+under the bar. The count that matters is absolute. A line appearing verbatim
+on eight separate pages is furniture whatever fraction that is.
+
+**Sections of one and two characters.** A slide title became the heading and a
+stray character was all that remained beneath it. Those cost a model call and
+return nothing.
+
+**Cards that were not cards.** A near-empty section produced "What is the focus
+of this handout? -> Unknown", twice. Another slide produced "Which movement of
+the 1900s was based on eugenics? -> Eugenics", where the answer sits in the
+question -- a rule the cloze path had from the start and the basic path had
+simply never been given. A references slide produced three citation cards.
+
+**Text silently missing.** 16 pages contain rotated text that pypdf cannot
+extract. It says so, once per page, as library noise that scrolls past. That is
+now collected and reported once, in the tool's own words, because it means
+cards are missing content.
+
+Together these took the document from 570 sections to 497, and every remaining
+tag names real subject matter.
+
+### The one that cannot be fixed in code
+
+From a sparse overview slide, `llama3.2` produced:
+
+> Which sex chromosome determines male characteristics? -> X
+
+It is the Y chromosome. The slide had little on it, so the model filled the gap
+from its own knowledge despite being told to use only what the notes state. The
+card is well formed, plausible and wrong, and no filter can catch it. On
+material you are graded on, prefer a larger model and read the deck before you
+study it.
+
 ## Reproducing
 
 ```console
