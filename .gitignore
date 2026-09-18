@@ -17,3 +17,6 @@ venv/
 
 # Generated decks
 out/
+
+# Real notes used for testing. Personal material, never published.
+examples/*.pdf
