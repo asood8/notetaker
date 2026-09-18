@@ -144,6 +144,39 @@ from a PDF has no `#` at all, so every sibling heading nested under the first
 one seen and whole sections were mislabelled. Heading levels are now tracked
 explicitly.
 
+## Vision models need the GPU, and nothing else helps
+
+`--ocr` reads scanned PDFs with a local vision model. On the machine used for
+every other measurement here, `qwen2.5vl:3b` could not finish a single page:
+
+| Render | Image | Result |
+| --- | --- | --- |
+| 72 DPI | 596x842 | timed out at 240s |
+| 110 DPI | 910x1287 | timed out at 240s |
+| 150 DPI | 1241x1754 | timed out at 240s |
+
+The flat result is the interesting part. Shrinking the image to a fifth of its
+area changed nothing, which rules out image size as the cause. `ollama ps`
+gave the real answer:
+
+```json
+{"name": "qwen2.5vl:3b", "size": 10794189504, "size_vram": 0}
+```
+
+`size_vram: 0` — the model was loaded entirely into system memory. The text
+models used elsewhere in this project are small enough for the GPU and run in
+seconds; the vision model is not, and falls back to the CPU, where it is
+effectively unusable.
+
+So the OCR code path is tested offline in full, but a successful transcription
+has never been observed on this hardware. It should be quick on a machine
+where the model fits in video memory. Treat that as untested rather than
+proven, and check `ollama ps` before blaming the tool.
+
+An image size cap is applied anyway -- pages are scaled to 1400px on the long
+edge before being sent -- because a model gains nothing from detail beyond what
+it can tokenize. It is a sensible default, not the fix for this.
+
 ## Reproducing
 
 ```console

@@ -11,6 +11,7 @@ tag would look like organization without being any, so pages are not marked.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from pathlib import Path
 
 TEXT_SUFFIXES = frozenset({".md", ".markdown", ".txt", ".text", ""})
@@ -31,12 +32,17 @@ class UnreadableNotes(Exception):
     """The file exists but its text could not be used."""
 
 
-def read_notes(path: Path) -> str:
-    """Return the text of `path`, whatever readable format it is in."""
+def read_notes(path: Path, *, ocr: Callable[[Path], str] | None = None) -> str:
+    """Return the text of `path`, whatever readable format it is in.
+
+    `ocr` is a fallback for PDFs with no text layer. It is passed in rather
+    than imported so that this module knows nothing about vision models, and
+    so the caller decides whether reading a scan is wanted at all.
+    """
     suffix = path.suffix.lower()
 
     if suffix == PDF_SUFFIX:
-        return read_pdf(path)
+        return read_pdf(path, ocr=ocr)
     if suffix in TEXT_SUFFIXES:
         return path.read_text(encoding="utf-8")
 
@@ -46,8 +52,8 @@ def read_notes(path: Path) -> str:
     )
 
 
-def read_pdf(path: Path) -> str:
-    """Extract the text layer of a PDF."""
+def read_pdf(path: Path, *, ocr: Callable[[Path], str] | None = None) -> str:
+    """Extract the text layer of a PDF, falling back to `ocr` if there is none."""
     try:
         from pypdf import PdfReader
         from pypdf.errors import PdfReadError
@@ -72,12 +78,15 @@ def read_pdf(path: Path) -> str:
             pages.append(cleaned)
 
     text = "\n\n".join(pages)
-    if not text.strip():
+    if text.strip():
+        return text
+
+    if ocr is None:
         raise UnreadableNotes(
-            f"{path.name} has no text layer. It is probably a scan; "
-            "notetaker cannot read images yet."
+            f"{path.name} has no text layer, so it is probably a scan. "
+            "Pass --ocr to read it with a local vision model."
         )
-    return text
+    return clean_extracted(ocr(path))
 
 
 def _try_unlock(reader) -> bool:

@@ -136,7 +136,7 @@ than like a setting you need to change.
 ## Development
 
 ```console
-$ pip install -e ".[dev,web]"
+$ pip install -e ".[dev,web,ocr]"
 $ pytest                  # offline, no Ollama needed
 $ pytest -m integration   # hits a real local model
 $ ruff check . && ruff format --check .
@@ -191,11 +191,38 @@ comes out organized. What is not recovered is nesting — every heading found in
 a PDF is treated as a sibling, because guessing at levels from extracted text
 gets it wrong more often than not.
 
-Two things are worth knowing. Text is extracted in layout mode, which keeps the
-blank lines between paragraphs; without it a whole page collapses into one
-run-on block and the model gets fragments instead of sentences. And a scanned
-PDF with no text layer can't be read at all — there's no OCR yet, and the error
-says so rather than producing an empty deck.
+Text is extracted in layout mode, which keeps the blank lines between
+paragraphs; without it a whole page collapses into one run-on block and the
+model gets fragments instead of sentences.
+
+### Scans
+
+A PDF that is photographs of pages has no text to extract. Passing `--ocr`
+renders each page and reads it with a local vision model, so scans stay as
+private as everything else:
+
+```console
+$ notetaker cards lectures/scan.pdf --ocr
+```
+
+It is off by default for two reasons, and both are worth knowing before you
+rely on it.
+
+**It needs a GPU.** A vision model has to fit in video memory to be practical.
+On the machine this was built on it did not, and Ollama loaded it into system
+memory instead — a single page then took over four minutes, and dropping the
+resolution from 150 DPI to 72 changed nothing at all, because the bottleneck
+was never the image size. Run `ollama ps` while it works: if `size_vram` is 0,
+the model is on the CPU and you should expect minutes per page.
+
+**A vision model can be confidently wrong.** Traditional OCR produces obvious
+garbage when it fails. A vision model produces a plausible wrong word instead,
+and a flashcard built on a misreading teaches you the mistake. Read what comes
+out before you study it.
+
+Scans are handled by the CLI only — the web page does not offer it, because a
+feature that can silently take twenty minutes does not belong behind a button
+that looks instant.
 
 ## Cloze cards
 
@@ -231,7 +258,7 @@ zero.
 
 ## Planned
 
-- OCR, so scanned notes work
+- Scans in the web UI, once they are fast enough to be worth waiting for
 
 ## License
 

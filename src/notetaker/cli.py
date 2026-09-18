@@ -24,6 +24,15 @@ from notetaker.llm.ollama import (
     DEFAULT_TIMEOUT,
     is_reasoning_model,
 )
+from notetaker.ocr import (
+    DEFAULT_DPI,
+    DEFAULT_VISION_MODEL,
+    OcrError,
+    read_pdf_with_ocr,
+)
+from notetaker.ocr import (
+    DEFAULT_TIMEOUT as DEFAULT_OCR_TIMEOUT,
+)
 from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES, Style
 
@@ -72,6 +81,19 @@ def cards(
     timeout: Annotated[
         float, typer.Option("--timeout", help="Seconds to wait per model call.")
     ] = DEFAULT_TIMEOUT,
+    ocr: Annotated[
+        bool,
+        typer.Option("--ocr", help="Read a scanned PDF with a local vision model."),
+    ] = False,
+    ocr_model: Annotated[
+        str, typer.Option("--ocr-model", help="Vision model used for scans.")
+    ] = DEFAULT_VISION_MODEL,
+    ocr_dpi: Annotated[
+        int, typer.Option("--ocr-dpi", help="Resolution pages are rendered at.")
+    ] = DEFAULT_DPI,
+    ocr_timeout: Annotated[
+        float, typer.Option("--ocr-timeout", help="Seconds to wait per scanned page.")
+    ] = DEFAULT_OCR_TIMEOUT,
     deck: Annotated[
         str | None, typer.Option("--deck", help="Anki deck name. Defaults to the file name.")
     ] = None,
@@ -82,8 +104,9 @@ def cards(
     style = _build_style(card_style)
 
     try:
-        text = read_notes(notes)
-    except UnreadableNotes as exc:
+        reader = _ocr_reader(ocr_model, ocr_dpi, ocr_timeout) if ocr else None
+        text = read_notes(notes, ocr=reader)
+    except (UnreadableNotes, OcrError) as exc:
         typer.secho(f"  {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1) from exc
     chunks = chunk_markdown(text, max_chars=chunk_chars)
@@ -169,6 +192,24 @@ def _build_client(backend: str, *, model: str, num_ctx: int, timeout: float) -> 
     if backend == "ollama":
         return OllamaLLM(model, num_ctx=num_ctx, timeout=timeout)
     raise typer.BadParameter(f"unknown backend {backend!r}; expected 'ollama' or 'fake'")
+
+
+def _ocr_reader(model: str, dpi: int, timeout: float) -> Callable[[Path], str]:
+    """Read a scan page by page, saying so as it goes. Each page is a model call."""
+
+    def read(path: Path) -> str:
+        typer.secho(
+            f"  scan      no text layer; reading with {model}. "
+            "This is slow, and a vision model can misread a word confidently.",
+            fg=typer.colors.YELLOW,
+        )
+
+        def page(number: int, total: int) -> None:
+            typer.echo(f"  page      {number}/{total}")
+
+        return read_pdf_with_ocr(path, model=model, dpi=dpi, timeout=timeout, on_page=page)
+
+    return read
 
 
 def _build_style(name: str) -> Style:
