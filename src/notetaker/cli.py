@@ -146,7 +146,10 @@ def cards(
     if backend == "ollama":
         typer.echo(f"  estimate  {estimate(len(chunks))}")
     if check:
-        typer.echo("  checking  every card is read back against its section, which doubles that")
+        typer.echo(
+            "  checking  every card is read back against its section, "
+            "which adds roughly 70% to that"
+        )
     if backend == "ollama" and is_reasoning_model(model):
         typer.secho(
             f"  warning   {model} reasons before answering and takes minutes"

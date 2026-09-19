@@ -241,8 +241,15 @@ Genetics 1, Lecture 2 Human Chromosome Structure 11" and so on. There is no
 material there to make cards from, which is exactly why the model invented
 some.
 
-The check is `--check`, and it is off by default because it roughly doubles the
-number of model calls. It fails open: an unreachable or incoherent checker
+The check is `--check`, and it is off by default because it costs about 70%
+more time: 170 seconds against 282 for the same three sections. It rejected 7
+of 15 cards there, which is a high rate, but those sections include the table
+of contents -- a passage that supports almost nothing.
+
+A note on measuring that. The first attempt put the cost at 7x, because the
+242-test suite was running on the same machine at the time, and two sections
+timed out under the load. Both numbers were artefacts of the measurement. Run
+timings on an idle machine or do not report them. It fails open: an unreachable or incoherent checker
 keeps every card, because a broken check must never be able to empty a deck.
 It verifies fidelity to your notes, not truth -- notes that are wrong will
 produce cards that pass.
