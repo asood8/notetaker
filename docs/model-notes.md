@@ -211,7 +211,7 @@ cards are missing content.
 Together these took the document from 570 sections to 497, and every remaining
 tag names real subject matter.
 
-### The one that cannot be fixed in code
+### The one no filter can catch -- and the one thing that does
 
 From a sparse overview slide, `llama3.2` produced:
 
@@ -219,9 +219,33 @@ From a sparse overview slide, `llama3.2` produced:
 
 It is the Y chromosome. The slide had little on it, so the model filled the gap
 from its own knowledge despite being told to use only what the notes state. The
-card is well formed, plausible and wrong, and no filter can catch it. On
-material you are graded on, prefer a larger model and read the deck before you
-study it.
+card is well formed and plausible, so no rule about its shape will ever reject
+it.
+
+What does reject it is a different question. Not "is this true" -- asking that
+sends the model back to the same memory that invented the card -- but "does
+this passage say this", with the words quoted. Reading the card back against
+its own section, `llama3.2` rejects it.
+
+Run against that slide, the check rejected two of three cards:
+
+| Card | Verdict |
+| --- | --- |
+| Which sex chromosome determines male characteristics? -> X | rejected |
+| What is the role of genetics in medicine? -> ... | rejected |
+| What is pharmacogenomics? -> ... | kept |
+
+The second rejection is also right, and explains the whole section: that
+passage is the **table of contents**. "Lecture 1 Introduction to Human
+Genetics 1, Lecture 2 Human Chromosome Structure 11" and so on. There is no
+material there to make cards from, which is exactly why the model invented
+some.
+
+The check is `--check`, and it is off by default because it roughly doubles the
+number of model calls. It fails open: an unreachable or incoherent checker
+keeps every card, because a broken check must never be able to empty a deck.
+It verifies fidelity to your notes, not truth -- notes that are wrong will
+produce cards that pass.
 
 ## Reproducing
 

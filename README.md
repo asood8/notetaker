@@ -60,6 +60,7 @@ notetaker cards NOTES [OPTIONS]        # NOTES is .md, .txt or .pdf
   --deck TEXT        Anki deck name                   [default: file name]
   --tag TEXT         Extra tag; repeatable
   --limit INT        Only use the first N sections
+  --check            Read each card back against its section
 ```
 
 ### Looking before you leap
@@ -268,6 +269,38 @@ produce a fair number of unusable sentences — hiding a word that is printed
 again in the same sentence, or stopping mid-clause. Those are filtered out, but
 the filter throws away real work, so expect fewer cards per section than you get
 with `--style basic`. Cloze suits notes already written as complete sentences.
+
+## Checking cards against your notes
+
+```console
+$ notetaker cards notes/genetics.pdf --check
+```
+
+With `--check`, every card is read back against the section it came from and
+asked one question: does this passage actually say this? Cards the model cannot
+support are dropped and counted.
+
+This is worth doing because the most dangerous failure is not an ugly card, it
+is a confident wrong one. From a sparse slide, `llama3.2` produced:
+
+> Which sex chromosome determines male characteristics? → X
+
+It is the Y chromosome. The card is well formed and plausible, so no formatting
+rule will ever catch it. What does catch it is that **the slide never said it** —
+the model filled an empty slide from its own memory. Asked whether the passage
+supports the card, and made to quote the words that do, the same model rejects
+it.
+
+Two things this is not:
+
+- **It is not a fact checker.** If your notes are wrong, a card repeating them
+  faithfully will pass. This checks fidelity to your source, not truth.
+- **It is not a guarantee.** The check runs on the same model that wrote the
+  cards. It removes obvious inventions; it does not certify what remains.
+
+It fails open on purpose. If the model is unreachable or answers with nonsense,
+every card is kept — a broken checker must never be able to empty your deck.
+The cost is roughly double the time, so it is off by default.
 
 ## Card quality
 

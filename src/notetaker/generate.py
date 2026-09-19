@@ -25,6 +25,7 @@ class GenerationResult:
     cards: list[Card] = field(default_factory=list)
     duplicates: int = 0
     low_quality: int = 0
+    unsupported: int = 0
     invalid_responses: int = 0
     failed_chunks: int = 0
 
@@ -36,6 +37,7 @@ def generate_cards(
     style: Style = BASIC,
     max_cards_per_chunk: int = DEFAULT_MAX_CARDS_PER_CHUNK,
     extra_tags: Iterable[str] = (),
+    check: Callable[[list[Card], str], list[bool]] | None = None,
     on_chunk: Callable[[Chunk, int], None] | None = None,
 ) -> GenerationResult:
     """Generate cards for every chunk, skipping anything the model gets wrong.
@@ -72,9 +74,16 @@ def generate_cards(
 
         cards = style.to_cards(batch)
         result.low_quality += len(batch.cards) - len(cards)
+        cards = cards[:max_cards_per_chunk]
+
+        if check is not None and cards:
+            supported = check(cards, chunk.text)
+            kept = [card for card, ok in zip(cards, supported, strict=False) if ok]
+            result.unsupported += len(cards) - len(kept)
+            cards = kept
 
         added = 0
-        for card in cards[:max_cards_per_chunk]:
+        for card in cards:
             if rejection_reason(card) is not None:
                 result.low_quality += 1
                 continue

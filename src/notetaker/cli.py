@@ -35,6 +35,7 @@ from notetaker.ocr import (
 )
 from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES, Style
+from notetaker.verify import check_cards
 
 SECONDS_PER_SECTION = (15, 35)
 """How long one section takes, roughly, measured on a small instruct model.
@@ -103,6 +104,10 @@ def cards(
     ocr_timeout: Annotated[
         float, typer.Option("--ocr-timeout", help="Seconds to wait per scanned page.")
     ] = DEFAULT_OCR_TIMEOUT,
+    check: Annotated[
+        bool,
+        typer.Option("--check", help="Check each card against the notes it came from."),
+    ] = False,
     limit: Annotated[
         int | None,
         typer.Option("--limit", help="Only use the first N sections. Good for a trial run."),
@@ -140,6 +145,8 @@ def cards(
     typer.echo(f"  style     {style.name}")
     if backend == "ollama":
         typer.echo(f"  estimate  {estimate(len(chunks))}")
+    if check:
+        typer.echo("  checking  every card is read back against its section, which doubles that")
     if backend == "ollama" and is_reasoning_model(model):
         typer.secho(
             f"  warning   {model} reasons before answering and takes minutes"
@@ -154,6 +161,7 @@ def cards(
         style=style,
         max_cards_per_chunk=max_cards,
         extra_tags=tag or [],
+        check=(lambda cards, passage: check_cards(cards, passage, client)) if check else None,
         on_chunk=_progress(len(chunks)),
     )
 
@@ -333,6 +341,7 @@ def _notes_on(result: GenerationResult) -> str:
     counts = (
         ("duplicate", result.duplicates),
         ("low-quality", result.low_quality),
+        ("unsupported", result.unsupported),
         ("invalid", result.invalid_responses),
         ("failed", result.failed_chunks),
     )
