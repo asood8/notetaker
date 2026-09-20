@@ -132,6 +132,27 @@
     color: var(--ink);
   }
 
+  .choice {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin: 0 0 1.75rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--guide);
+  }
+
+  .choice input { margin-top: 0.45rem; accent-color: var(--rule); }
+
+  .choice label { color: var(--ink); font-size: 0.95rem; margin: 0; }
+
+  .choice small {
+    display: block;
+    color: var(--ink-soft);
+    font-size: 0.85rem;
+    max-width: 30rem;
+    margin-top: 0.15rem;
+  }
+
   .go {
     font-family: var(--serif);
     font-size: 1.05rem;
@@ -289,6 +310,17 @@
         </div>
       </div>
 
+      <div class="choice">
+        <input type="checkbox" id="check" name="check">
+        <label for="check">
+          Read each card back against your notes
+          <small>
+            Drops cards the notes do not support, which catches facts the model
+            invented. Takes about 70% longer.
+          </small>
+        </label>
+      </div>
+
       <button class="go" id="go" type="submit" disabled>Make cards</button>
       <p class="hint" id="hint"></p>
     </form>
@@ -435,6 +467,7 @@
     const parts = [];
     if (counts.duplicates) parts.push(counts.duplicates + " repeated");
     if (counts.low_quality) parts.push(counts.low_quality + " too weak to keep");
+    if (counts.unsupported) parts.push(counts.unsupported + " not supported by your notes");
     if (counts.invalid) parts.push(counts.invalid + " unreadable replies");
     if (counts.failed) parts.push(counts.failed + " sections failed");
     return parts.length ? "Set aside: " + parts.join(", ") + "." : "";
@@ -495,7 +528,7 @@
     results.hidden = true;
     el("running-note").hidden = false;
     go.disabled = true;
-    go.textContent = "Making cards";
+    go.textContent = el("check").checked ? "Making and checking cards" : "Making cards";
 
     const data = new FormData();
     data.append("file", selected);
@@ -505,6 +538,7 @@
     data.append("deck", el("deck").value);
     data.append("tags", el("tags").value);
     data.append("max_cards", el("max_cards").value);
+    data.append("check", el("check").checked ? "true" : "false");
 
     fetch("/api/jobs", { method: "POST", body: data })
       .then((response) =>

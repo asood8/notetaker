@@ -203,3 +203,23 @@ def test_an_upload_cannot_escape_its_directory(client) -> None:
     job = finish(client, start(client, name="../../escape.md"))
     assert job["name"] == "escape.md"
     assert job["state"] == "done"
+
+
+def test_the_checker_can_be_turned_on(client) -> None:
+    # The fake backend answers the check prompt with no verdicts, which fails
+    # open, so every card survives and the plumbing is what is under test.
+    job = finish(client, start(client, check="true"))
+    assert job["state"] == "done"
+    assert job["cards"]
+    assert "unsupported" in job["counts"]
+
+
+def test_the_checker_is_off_unless_asked(client) -> None:
+    job = finish(client, start(client))
+    assert job["counts"]["unsupported"] == 0
+
+
+def test_the_page_offers_the_check(client) -> None:
+    page = client.get("/").text
+    assert 'id="check"' in page
+    assert "Read each card back against your notes" in page

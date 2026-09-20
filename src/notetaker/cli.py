@@ -44,6 +44,9 @@ Only ever used to set expectations before a long run. A bigger model, a slower
 machine or a reasoning model will all leave this range behind.
 """
 
+CHECK_OVERHEAD = 1.7
+"""What --check adds. Measured: 170s against 282s over the same three sections."""
+
 MAX_LISTED_SECTIONS = 30
 
 app = typer.Typer(
@@ -144,12 +147,9 @@ def cards(
     typer.echo(f"  model     {client.name}")
     typer.echo(f"  style     {style.name}")
     if backend == "ollama":
-        typer.echo(f"  estimate  {estimate(len(chunks))}")
+        typer.echo(f"  estimate  {estimate(len(chunks), check=check)}")
     if check:
-        typer.echo(
-            "  checking  every card is read back against its section, "
-            "which adds roughly 70% to that"
-        )
+        typer.echo("  checking  every card is read back against its section")
     if backend == "ollama" and is_reasoning_model(model):
         typer.secho(
             f"  warning   {model} reasons before answering and takes minutes"
@@ -242,11 +242,13 @@ def inspect(
             fg=typer.colors.YELLOW,
         )
     typer.echo(f"  estimate  {estimate(len(chunks))} to generate")
+    typer.echo(f"            {estimate(len(chunks), check=True)} with --check")
 
 
-def estimate(sections: int) -> str:
+def estimate(sections: int, *, check: bool = False) -> str:
     """A range, deliberately wide. Anything narrower would be pretending."""
-    low, high = (sections * seconds for seconds in SECONDS_PER_SECTION)
+    overhead = CHECK_OVERHEAD if check else 1
+    low, high = (round(sections * seconds * overhead) for seconds in SECONDS_PER_SECTION)
     return f"roughly {_duration(low)} to {_duration(high)}"
 
 

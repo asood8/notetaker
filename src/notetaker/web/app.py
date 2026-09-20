@@ -33,6 +33,7 @@ from notetaker.llm.ollama import DEFAULT_MODEL, is_reasoning_model
 from notetaker.models import Card
 from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES
+from notetaker.verify import check_cards
 
 STATIC = Path(__file__).resolve().parent / "static"
 
@@ -148,6 +149,7 @@ def create_app() -> FastAPI:
         backend: str = Form("ollama"),
         deck: str = Form(""),
         tags: str = Form(""),
+        check: bool = Form(False),
         max_cards: int = Form(DEFAULT_MAX_CARDS_PER_CHUNK),
     ) -> dict[str, str]:
         if style not in STYLES:
@@ -173,7 +175,7 @@ def create_app() -> FastAPI:
 
         thread = threading.Thread(
             target=_run,
-            args=(jobs, job, source, backend, deck, tags, max_cards),
+            args=(jobs, job, source, backend, deck, tags, max_cards, check),
             daemon=True,
         )
         thread.start()
@@ -208,6 +210,7 @@ def _run(
     deck: str,
     tags: str,
     max_cards: int,
+    check: bool = False,
 ) -> None:
     """The whole pipeline, off the request thread."""
     try:
@@ -226,6 +229,7 @@ def _run(
 
     jobs.update(job, total=len(chunks))
     client = FakeLLM() if backend == "fake" else OllamaLLM(job.model)
+    verifier = (lambda cards, passage: check_cards(cards, passage, client)) if check else None
 
     def progress(chunk, added: int) -> None:
         job.sections.append({"tag": chunk.tag or "(no heading)", "cards": added})
@@ -238,6 +242,7 @@ def _run(
             style=STYLES[job.style],
             max_cards_per_chunk=max_cards,
             extra_tags=[tag for tag in tags.split() if tag],
+            check=verifier,
             on_chunk=progress,
         )
     except Exception as exc:  # the thread must not die silently
@@ -264,6 +269,7 @@ def _run(
         counts={
             "duplicates": result.duplicates,
             "low_quality": result.low_quality,
+            "unsupported": result.unsupported,
             "invalid": result.invalid_responses,
             "failed": result.failed_chunks,
         },
