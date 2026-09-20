@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
@@ -43,6 +44,8 @@ SECONDS_PER_SECTION = (15, 35)
 Only ever used to set expectations before a long run. A bigger model, a slower
 machine or a reasoning model will all leave this range behind.
 """
+
+SECTION_RANGE_RE = re.compile(r"^(\d*)\s*-\s*(\d*)$")
 
 CHECK_OVERHEAD = 1.7
 """What --check adds. Measured: 170s against 282s over the same three sections."""
@@ -111,9 +114,12 @@ def cards(
         bool,
         typer.Option("--check", help="Check each card against the notes it came from."),
     ] = False,
-    limit: Annotated[
-        int | None,
-        typer.Option("--limit", help="Only use the first N sections. Good for a trial run."),
+    sections: Annotated[
+        str | None,
+        typer.Option(
+            "--sections",
+            help="Which sections to use: 10-40, 10-, -3 for the first three, or 12.",
+        ),
     ] = None,
     deck: Annotated[
         str | None, typer.Option("--deck", help="Anki deck name. Defaults to the file name.")
@@ -135,13 +141,16 @@ def cards(
         typer.secho(f"{notes} has no usable content.", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
 
-    if limit is not None and limit > 0:
-        skipped = max(0, len(chunks) - limit)
-        chunks = chunks[:limit]
-        if skipped:
-            typer.secho(
-                f"  limit     using {limit} of {limit + skipped} sections", fg=typer.colors.YELLOW
-            )
+    total_sections = len(chunks)
+    first, last = parse_sections(sections, total_sections) if sections else (1, total_sections)
+    chunks = chunks[first - 1 : last]
+    ranged = (first, last) != (1, total_sections)
+
+    if ranged:
+        typer.secho(
+            f"  sections  {first}-{last} of {total_sections}",
+            fg=typer.colors.YELLOW,
+        )
 
     typer.echo(f"  reading   {notes}  ({len(chunks)} sections, {len(text)} chars)")
     typer.echo(f"  model     {client.name}")
@@ -177,12 +186,19 @@ def cards(
     typer.echo(f"  generated {len(result.cards)} cards{_notes_on(result)}")
 
     deck_name = deck or notes.stem
-    apkg_path = write_apkg(result.cards, out / f"{notes.stem}.apkg", deck_name)
-    tsv_path = write_tsv(result.cards, out / f"{notes.stem}.tsv")
+    # A range goes in the file name. Working through a document a lecture at a
+    # time otherwise means each run quietly overwrites the last one's deck.
+    stem = f"{notes.stem}.{first}-{last}" if ranged else notes.stem
+    apkg_path = write_apkg(result.cards, out / f"{stem}.apkg", deck_name)
+    tsv_path = write_tsv(result.cards, out / f"{stem}.tsv")
 
     typer.echo("")
     typer.echo(f"  {apkg_path}   double-click to import")
     typer.echo(f"  {tsv_path}   or use File > Import")
+
+    if last < total_sections:
+        typer.echo("")
+        typer.echo(f"  next      --sections {last + 1}-{total_sections}")
 
 
 @app.command()
@@ -243,6 +259,38 @@ def inspect(
         )
     typer.echo(f"  estimate  {estimate(len(chunks))} to generate")
     typer.echo(f"            {estimate(len(chunks), check=True)} with --check")
+
+
+def parse_sections(spec: str, total: int) -> tuple[int, int]:
+    """Turn `10-40`, `10-`, `-3` or `12` into an inclusive, 1-based pair.
+
+    The numbering is the one `inspect` prints, so a range can be copied
+    straight off that listing. Working through a long document one lecture at
+    a time is the point: a 497-section deck is hours in one go, and no way to
+    ask for the middle of it would make that an all-or-nothing run.
+    """
+    text = spec.strip()
+
+    if text.isdigit():
+        first = last = int(text)
+    else:
+        match = SECTION_RANGE_RE.match(text)
+        if match is None or not any(match.groups()):
+            raise typer.BadParameter(
+                f"cannot read {spec!r}; use 10-40, 10-, -3 for the first three, or 12"
+            )
+        start, stop = match.groups()
+        first = int(start) if start else 1
+        last = int(stop) if stop else total
+
+    if first < 1:
+        raise typer.BadParameter("sections are numbered from 1")
+    if first > last:
+        raise typer.BadParameter(f"{first}-{last} runs backwards")
+    if first > total:
+        raise typer.BadParameter(f"there are only {total} sections")
+
+    return first, min(last, total)
 
 
 def estimate(sections: int, *, check: bool = False) -> str:

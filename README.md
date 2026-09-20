@@ -59,7 +59,7 @@ notetaker cards NOTES [OPTIONS]        # NOTES is .md, .txt or .pdf
   --timeout FLOAT    Seconds to wait per call         [default: 180]
   --deck TEXT        Anki deck name                   [default: file name]
   --tag TEXT         Extra tag; repeatable
-  --limit INT        Only use the first N sections
+  --sections RANGE   Which sections to use, e.g. 10-40, 10-, -3, 12
   --check            Read each card back against its section
 ```
 
@@ -86,8 +86,25 @@ section will be tagged, and warns about sections with no heading above them,
 whose cards will carry no tags of their own. If the split looks wrong, adjust
 `--chunk-chars` before spending twenty minutes on a run.
 
-For a first pass at something long, `--limit 3` generates from the first three
-sections only, so you can look at the cards before committing to the rest.
+### Taking it a lecture at a time
+
+The section numbers `inspect` prints are the ones `--sections` takes, so a long
+document does not have to be an all-or-nothing run:
+
+```console
+$ notetaker cards lectures.pdf --sections -3          # a first look
+$ notetaker cards lectures.pdf --sections 10-40       # one lecture
+$ notetaker cards lectures.pdf --sections 41-         # everything after it
+$ notetaker cards lectures.pdf --sections 12          # one section
+```
+
+A 500-section deck is hours in one go. A lecture at a time is twenty minutes,
+and you get to read each batch before deciding whether the next one is worth
+running.
+
+Each range writes its own files — `lectures.10-40.apkg` — so one run cannot
+quietly overwrite the last one's deck, and each finishes by telling you the
+range to ask for next.
 
 Notes are split at heading boundaries, and any section too large for the
 context window is split again at paragraph boundaries. Duplicate questions are

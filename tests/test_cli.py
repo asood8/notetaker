@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from notetaker import __version__
@@ -188,30 +189,96 @@ def test_inspect_reports_an_empty_file(tmp_path: Path) -> None:
     assert result.exit_code == 1
 
 
-def test_limit_uses_only_the_first_sections(tmp_path: Path) -> None:
+def long_notes(tmp_path: Path, count: int = 6) -> Path:
     notes = tmp_path / "big.md"
-    body = "".join(f"## Section {n}\n\nOsmosis is the diffusion of water.\n\n" for n in range(6))
-    notes.write_text(body, encoding="utf-8")
-    out = tmp_path / "out"
+    topics = ["osmosis", "glycolysis", "mitosis", "telomeres", "enzymes", "ribosomes"]
+    notes.write_text(
+        "".join(
+            f"## Section {n}\n\n"
+            f"{topics[n % len(topics)].title()} is a process that governs transport in cells.\n\n"
+            for n in range(count)
+        ),
+        encoding="utf-8",
+    )
+    return notes
 
-    result = runner.invoke(
-        app, ["cards", str(notes), "--llm", "fake", "--limit", "2", "--out", str(out)]
+
+def run_sections(tmp_path: Path, spec: str, count: int = 6):
+    notes = long_notes(tmp_path, count)
+    return runner.invoke(
+        app,
+        ["cards", str(notes), "--llm", "fake", "--sections", spec, "--out", str(tmp_path / "out")],
     )
 
-    assert result.exit_code == 0
-    assert "using 2 of 6 sections" in result.output
+
+def test_a_leading_range_takes_the_first_sections(tmp_path: Path) -> None:
+    result = run_sections(tmp_path, "-2")
+    assert result.exit_code == 0, result.output
+    assert "sections  1-2 of 6" in result.output
     assert "[2/2]" in result.output
     assert "[3/" not in result.output
 
 
-def test_a_limit_larger_than_the_document_changes_nothing(tmp_path: Path) -> None:
+def test_a_middle_range_skips_what_came_before(tmp_path: Path) -> None:
+    result = run_sections(tmp_path, "3-4")
+    assert result.exit_code == 0, result.output
+    assert "sections  3-4 of 6" in result.output
+    assert "[2/2]" in result.output
+
+
+def test_an_open_ended_range_runs_to_the_end(tmp_path: Path) -> None:
+    result = run_sections(tmp_path, "5-")
+    assert result.exit_code == 0, result.output
+    assert "sections  5-6 of 6" in result.output
+
+
+def test_a_single_section_can_be_asked_for(tmp_path: Path) -> None:
+    result = run_sections(tmp_path, "4")
+    assert result.exit_code == 0, result.output
+    assert "sections  4-4 of 6" in result.output
+    assert "[1/1]" in result.output
+
+
+def test_the_whole_document_is_not_announced_as_a_range(tmp_path: Path) -> None:
+    result = run_sections(tmp_path, "1-6")
+    assert result.exit_code == 0, result.output
+    assert "sections  " not in result.output
+
+
+def test_a_partial_run_says_what_to_ask_for_next(tmp_path: Path) -> None:
+    result = run_sections(tmp_path, "1-2")
+    assert "next      --sections 3-6" in result.output
+
+
+def test_the_last_range_offers_no_next(tmp_path: Path) -> None:
+    result = run_sections(tmp_path, "5-")
+    assert "next" not in result.output
+
+
+def test_a_ranged_run_writes_its_own_files(tmp_path: Path) -> None:
+    # Two ranges of the same document must not overwrite each other.
+    notes = long_notes(tmp_path)
+    out = tmp_path / "out"
+    for spec in ("1-2", "3-4"):
+        runner.invoke(
+            app, ["cards", str(notes), "--llm", "fake", "--sections", spec, "--out", str(out)]
+        )
+
+    assert (out / "big.1-2.apkg").exists()
+    assert (out / "big.3-4.apkg").exists()
+
+
+def test_a_full_run_keeps_the_plain_file_name(tmp_path: Path) -> None:
     notes = write_notes(tmp_path)
     out = tmp_path / "out"
-    result = runner.invoke(
-        app, ["cards", str(notes), "--llm", "fake", "--limit", "99", "--out", str(out)]
-    )
-    assert result.exit_code == 0
-    assert "using" not in result.output
+    runner.invoke(app, ["cards", str(notes), "--llm", "fake", "--out", str(out)])
+    assert (out / "bio.apkg").exists()
+
+
+@pytest.mark.parametrize("spec", ["0-5", "40-10", "99-100", "abc", "-"])
+def test_an_unusable_range_is_refused(tmp_path: Path, spec: str) -> None:
+    result = run_sections(tmp_path, spec)
+    assert result.exit_code != 0
 
 
 def test_durations_read_naturally() -> None:
