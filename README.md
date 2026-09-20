@@ -300,8 +300,9 @@ Two things this is not:
 
 It fails open on purpose. If the model is unreachable or answers with nonsense,
 every card is kept — a broken checker must never be able to empty your deck.
-It costs about 70% more time -- 170s against 282s over the same three
-sections -- so it is off by default.
+It costs about 70% more time — 170s against 282s over the same three sections —
+so it is off by default. The web page offers it as a checkbox, and `inspect`
+shows both estimates so you can decide before starting.
 
 ## Card quality
 
