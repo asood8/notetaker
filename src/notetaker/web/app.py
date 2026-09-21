@@ -26,17 +26,18 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import FastAPI, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
+from pydantic import ValidationError
 
 from notetaker.chunking import DEFAULT_MAX_CHARS, Chunk, chunk_markdown
 from notetaker.export import write_apkg, write_rejects, write_tsv
 from notetaker.generate import DEFAULT_MAX_CARDS_PER_CHUNK, generate_cards
 from notetaker.llm import FakeLLM, OllamaLLM
 from notetaker.llm.ollama import DEFAULT_MODEL, is_reasoning_model
-from notetaker.models import Card
+from notetaker.models import Card, CardType
 from notetaker.ocr import DEFAULT_VISION_MODEL, OcrError, read_pdf_with_ocr
 from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES
@@ -127,7 +128,12 @@ class Job:
             "error": self.error,
             "rejected": list(self.rejected),
             "cards": [
-                {"question": card.question, "answer": card.answer, "tags": list(card.tags)}
+                {
+                    "question": card.question,
+                    "answer": card.answer,
+                    "tags": list(card.tags),
+                    "card_type": str(card.card_type),
+                }
                 for card in self.cards
             ],
         }
@@ -296,6 +302,39 @@ def create_app() -> FastAPI:
     @app.get("/api/jobs/{job_id}")
     def status(job_id: str) -> dict[str, Any]:
         return jobs.get(job_id, "job").snapshot()
+
+    @app.post("/api/jobs/{job_id}/cards")
+    def edit_cards(job_id: str, cards: Annotated[list[dict], Body()]) -> dict[str, int]:
+        """Replace a job's cards with edited ones and rewrite the deck.
+
+        Dropping a bad card is easy; a card that is nearly right is the common
+        case, and retyping it in Anki afterwards defeats the point of the tool.
+        """
+        job: Job = jobs.get(job_id, "job")
+        if job.directory is None:
+            raise HTTPException(status_code=409, detail="That deck is not ready yet.")
+
+        try:
+            edited = [
+                Card(
+                    question=entry.get("question", ""),
+                    answer=entry.get("answer", ""),
+                    tags=list(entry.get("tags") or []),
+                    card_type=entry.get("card_type") or CardType.BASIC,
+                )
+                for entry in cards
+            ]
+        except ValidationError as exc:
+            raise HTTPException(status_code=400, detail="A card was left empty.") from exc
+
+        if not edited:
+            raise HTTPException(status_code=400, detail="No cards were given.")
+
+        stem = _stem(job)
+        write_apkg(edited, job.directory / f"{stem}.apkg", Path(job.name).stem)
+        write_tsv(edited, job.directory / f"{stem}.tsv")
+        jobs.update(job, cards=edited)
+        return {"cards": len(edited)}
 
     @app.get("/api/jobs/{job_id}/deck.{extension}")
     def download(job_id: str, extension: str, keep: str | None = None) -> FileResponse:

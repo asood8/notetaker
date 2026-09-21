@@ -378,3 +378,78 @@ def test_a_download_before_any_cards_is_refused(client) -> None:
 def test_the_page_offers_the_partial_download(client) -> None:
     page = client.get("/").text
     assert "Download the cards made so far" in page
+
+
+# --- editing a card that is nearly right --------------------------------------
+
+
+def edited(job: dict, index: int, **changes) -> list[dict]:
+    cards = [dict(card) for card in job["cards"]]
+    cards[index].update(changes)
+    return cards
+
+
+def test_an_edited_card_reaches_the_deck(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    job = finish(client, job_id)
+
+    response = client.post(
+        f"/api/jobs/{job_id}/cards",
+        json=edited(job, 0, question="What does osmosis move?", answer="Water"),
+    )
+
+    assert response.status_code == 200
+    tsv = client.get(f"/api/jobs/{job_id}/deck.tsv").text
+    assert "What does osmosis move?" in tsv
+    assert job["cards"][0]["question"] not in tsv
+
+
+def test_an_edit_survives_into_the_package(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    job = finish(client, job_id)
+
+    client.post(f"/api/jobs/{job_id}/cards", json=edited(job, 0, answer="Edited answer"))
+
+    assert client.get(f"/api/jobs/{job_id}/deck.apkg").content[:2] == b"PK"
+    assert client.get(f"/api/jobs/{job_id}").json()["cards"][0]["answer"] == "Edited answer"
+
+
+def test_an_empty_card_is_refused(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    job = finish(client, job_id)
+
+    response = client.post(f"/api/jobs/{job_id}/cards", json=edited(job, 0, question=""))
+
+    assert response.status_code == 400
+    assert "empty" in response.json()["detail"]
+
+
+def test_sending_no_cards_is_refused(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    finish(client, job_id)
+    assert client.post(f"/api/jobs/{job_id}/cards", json=[]).status_code == 400
+
+
+def test_editing_an_unknown_job_is_a_404(client) -> None:
+    response = client.post("/api/jobs/nope/cards", json=[{"question": "q", "answer": "a"}])
+    assert response.status_code == 404
+
+
+def test_a_cloze_card_keeps_its_type_when_edited(client) -> None:
+    job_id = start(client, preview(client)["id"], style="cloze")
+    job = finish(client, job_id)
+    assert job["cards"][0]["card_type"] == "cloze"
+
+    response = client.post(
+        f"/api/jobs/{job_id}/cards",
+        json=edited(job, 0, question="Osmosis moves {{c1::water}} across a membrane."),
+    )
+
+    assert response.status_code == 200
+    assert "#notetype:Cloze" in client.get(f"/api/jobs/{job_id}/deck.tsv").text
+
+
+def test_the_page_says_cards_can_be_edited(client) -> None:
+    page = client.get("/").text
+    assert "Click any question or answer to change it." in page
+    assert "contentEditable" in page

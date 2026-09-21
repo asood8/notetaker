@@ -57,9 +57,11 @@ Every section is listed up front and fills in as the model finishes with it.
 
 ![Sections filling in one at a time](docs/images/web-progress.jpg)
 
-At the end you get the cards in a table, each with a tick box. Untick anything
-that looks wrong before downloading, which is the quickest answer to a model
-that is right most of the time but not all of it.
+At the end you get the cards in a table. Untick anything you don't want, and
+click a question or answer to rewrite it — a model that is right most of the
+time still needs somewhere to fix the times it wasn't, and doing that here
+beats retyping it in Anki later. Edits save as you go, so the downloads always
+match what you see.
 
 Double-click the `.apkg` and Anki takes care of the rest. The `.tsv` is for when
 you'd rather look things over in a spreadsheet first.
@@ -203,7 +205,6 @@ several models and prints the cards so you can judge them yourself.
 
 - The checker drops about a third of cards, and whether that is correct or too
   eager has not been measured
-- Cards can be dropped before downloading, but not edited
 - Near-duplicates whose questions differ in wording but share an answer still
   get through
 

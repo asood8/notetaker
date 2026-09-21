@@ -259,6 +259,9 @@
   td { padding: 0.7rem 1rem 0.7rem 0; border-bottom: 1px solid var(--guide); vertical-align: top; }
   td.tag { font-family: var(--mono); font-size: 0.82rem; color: var(--ink-soft); padding-right: 0; }
   td.why { font-size: 0.85rem; color: var(--rule); }
+  td.edit { cursor: text; }
+  td.edit:hover { background: #f3f6f3; }
+  td.edit:focus { outline: 2px solid var(--rule); outline-offset: -2px; background: #fff; }
   td.pick, th.pick { width: 2rem; padding-right: 0.5rem; }
   td.pick input, th.pick input { accent-color: var(--rule); }
   tr.dropped-row td:not(.pick) { opacity: 0.4; text-decoration: line-through; }
@@ -433,6 +436,7 @@
       <a id="dropped-file" href="#" hidden>Download dropped cards</a>
     </div>
     <p class="dropped" id="selected-line"></p>
+    <p class="dropped" id="edit-note">Click any question or answer to change it.</p>
     <table>
       <thead>
         <tr>
@@ -759,6 +763,40 @@
     });
   }
 
+  function commitEdit(cell) {
+    const card = currentJob.cards[Number(cell.dataset.index)];
+    const field = cell.dataset.field;
+    const text = cell.textContent.trim();
+
+    // A cloze card has no separate answer; anything else needs both sides.
+    const mayBeEmpty = field === "answer" && card.card_type === "cloze";
+    if (!text && !mayBeEmpty) {
+      cell.textContent = cell.dataset.before || card[field];
+      return;
+    }
+
+    if (text === card[field]) return;
+    card[field] = text;
+    cell.textContent = text;
+    saveCards();
+  }
+
+  function saveCards() {
+    el("edit-note").textContent = "Saving...";
+    fetch("/api/jobs/" + currentJob.id + "/cards", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(currentJob.cards),
+    })
+      .then((response) => {
+        if (!response.ok) throw new Error("that change could not be saved");
+        el("edit-note").textContent = "Saved. Your downloads include the change.";
+      })
+      .catch((problem) => {
+        el("edit-note").textContent = problem.message;
+      });
+  }
+
   function chosenBoxes() {
     return Array.from(el("cards").querySelectorAll('input[type="checkbox"]'));
   }
@@ -814,8 +852,25 @@
 
       [card.question, card.answer, card.tags.join(" ")].forEach((text, column) => {
         const cell = document.createElement("td");
-        if (column === 2) cell.className = "tag";
         cell.textContent = text;
+
+        if (column === 2) {
+          cell.className = "tag";
+        } else {
+          cell.className = "edit";
+          cell.contentEditable = "true";
+          cell.spellcheck = false;
+          cell.dataset.index = index;
+          cell.dataset.field = column === 0 ? "question" : "answer";
+          cell.setAttribute("aria-label", column === 0 ? "Question" : "Answer");
+          cell.addEventListener("focus", () => { cell.dataset.before = cell.textContent; });
+          cell.addEventListener("blur", () => commitEdit(cell));
+          cell.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") { event.preventDefault(); cell.blur(); }
+            if (event.key === "Escape") { cell.textContent = cell.dataset.before; cell.blur(); }
+          });
+        }
+
         row.appendChild(cell);
       });
 
