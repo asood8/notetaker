@@ -19,10 +19,20 @@ DEFAULT_MAX_CARDS_PER_CHUNK = 8
 
 
 @dataclass
+class Rejected:
+    """A card that was thrown away, and why."""
+
+    card: Card
+    reason: str
+    tag: str = ""
+
+
+@dataclass
 class GenerationResult:
     """Cards, plus what went wrong along the way."""
 
     cards: list[Card] = field(default_factory=list)
+    rejected: list[Rejected] = field(default_factory=list)
     duplicates: int = 0
     low_quality: int = 0
     unsupported: int = 0
@@ -78,17 +88,27 @@ def generate_cards(
 
         if check is not None and cards:
             supported = check(cards, chunk.text)
-            kept = [card for card, ok in zip(cards, supported, strict=False) if ok]
-            result.unsupported += len(cards) - len(kept)
+            kept = []
+            for card, ok in zip(cards, supported, strict=False):
+                if ok:
+                    kept.append(card)
+                else:
+                    result.unsupported += 1
+                    result.rejected.append(
+                        Rejected(card, "your notes do not support this", chunk.tag)
+                    )
             cards = kept
 
         added = 0
         for card in cards:
-            if rejection_reason(card) is not None:
+            reason = rejection_reason(card)
+            if reason is not None:
                 result.low_quality += 1
+                result.rejected.append(Rejected(card, reason, chunk.tag))
                 continue
             if not deduper.add(card):
                 result.duplicates += 1
+                result.rejected.append(Rejected(card, "already covered by another card", chunk.tag))
                 continue
             card.tags = _tags_for(chunk, shared_tags)
             result.cards.append(card)

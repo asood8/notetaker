@@ -45,11 +45,7 @@
     margin: 0 0 0.35rem;
   }
 
-  .lede {
-    margin: 0 0 2rem;
-    max-width: 34rem;
-    color: var(--ink-soft);
-  }
+  .lede { margin: 0 0 2rem; max-width: 34rem; color: var(--ink-soft); }
 
   .sheet {
     position: relative;
@@ -58,8 +54,8 @@
     padding: 2rem 2rem 2rem 3.75rem;
   }
 
-  /* The margin rule of a ruled page. The only red on the page until
-     something needs attention. */
+  /* The margin rule of a ruled page. The only red until something needs
+     attention. */
   .sheet::before {
     content: "";
     position: absolute;
@@ -69,6 +65,13 @@
     width: 1px;
     background: var(--rule);
     opacity: 0.45;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.5rem;
+    margin: 0 0 0.2rem;
   }
 
   .drop {
@@ -91,32 +94,13 @@
   }
 
   .drop small { color: var(--ink-soft); display: block; margin-top: 0.5rem; }
-
   .drop.over { border-color: var(--rule); border-style: solid; background: #fff6f5; }
-
-  .chosen {
-    margin-top: 1rem;
-    padding: 0.6rem 0.8rem;
-    border-left: 2px solid var(--rule);
-    background: #fbf7f6;
-    font-size: 0.95rem;
-  }
-
-  .chosen button {
-    border: 0;
-    background: none;
-    color: var(--ink-soft);
-    text-decoration: underline;
-    cursor: pointer;
-    font: inherit;
-    padding: 0 0 0 0.5rem;
-  }
 
   .options {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
     gap: 1rem 1.5rem;
-    margin: 1.75rem 0;
+    margin: 1.5rem 0;
   }
 
   label { display: block; font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 0.3rem; }
@@ -136,20 +120,19 @@
     display: flex;
     gap: 0.6rem;
     align-items: flex-start;
-    margin: 0 0 1.75rem;
-    padding-top: 0.25rem;
+    margin: 0 0 1.5rem;
+    padding-top: 0.75rem;
     border-top: 1px solid var(--guide);
   }
 
   .choice input { margin-top: 0.45rem; accent-color: var(--rule); }
-
   .choice label { color: var(--ink); font-size: 0.95rem; margin: 0; }
 
   .choice small {
     display: block;
     color: var(--ink-soft);
     font-size: 0.85rem;
-    max-width: 30rem;
+    max-width: 32rem;
     margin-top: 0.15rem;
   }
 
@@ -163,8 +146,6 @@
     cursor: pointer;
   }
 
-  /* Not a faded version of the live button: a washed-out red reads as a
-     rendering fault rather than a state. */
   .go[disabled] {
     background: transparent;
     color: var(--ink-soft);
@@ -172,11 +153,53 @@
     cursor: default;
   }
 
+  .plain {
+    border: 1px solid var(--edge);
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 0.45rem 1rem;
+    cursor: pointer;
+    margin-left: 0.5rem;
+  }
+
   .hint { margin-top: 1rem; font-size: 0.9rem; color: var(--ink-soft); }
+  .note { font-size: 0.9rem; color: var(--ink-soft); border-left: 2px solid var(--guide);
+          padding-left: 0.75rem; margin: 0.6rem 0; }
+
+  .summary { font-family: var(--serif); font-size: 1.15rem; margin: 0 0 0.3rem; }
+  .summary strong { color: var(--rule); font-weight: 400; }
+
+  /* The section list. Scrolls, because a slide deck can have hundreds. */
+  .sections-list {
+    max-height: 15rem;
+    overflow-y: auto;
+    border-top: 1px solid var(--guide);
+    border-bottom: 1px solid var(--guide);
+    margin: 1rem 0;
+  }
+
+  .sections-list div {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.3rem 0.5rem 0.3rem 0;
+    font-size: 0.88rem;
+    border-bottom: 1px solid #eef1f3;
+  }
+
+  .sections-list div:last-child { border-bottom: 0; }
+  .sections-list .n { color: var(--ink-soft); min-width: 3rem; text-align: right; }
+  .sections-list .t { font-family: var(--mono); font-size: 0.82rem; flex: 1; }
+  .sections-list .c { color: var(--ink-soft); }
+  .sections-list div.out { opacity: 0.35; }
+
+  .range { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; }
+  .range div { flex: 0 0 7rem; }
 
   /* Progress: the point of the page. Every section is listed up front, so the
-     wait has a shape, and each one fills in as the model finishes with it. */
-  .sections { list-style: none; margin: 0; padding: 0; }
+     wait has a shape, and each fills in as the model finishes with it. */
+  .sections { list-style: none; margin: 0; padding: 0; max-height: 26rem; overflow-y: auto; }
 
   .sections li {
     display: flex;
@@ -188,11 +211,8 @@
   }
 
   .sections li:first-child { border-top: 1px solid var(--guide); }
-
   .sections li .what { font-family: var(--mono); font-size: 0.9rem; }
-
   .sections li.filled { color: var(--ink); }
-
   .sections li.filled .count { color: var(--rule); }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -211,16 +231,8 @@
   }
 
   .results { margin-top: 2.5rem; }
-
-  .results h2 {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-size: 1.6rem;
-    margin: 0 0 0.25rem;
-  }
-
+  .results h2 { font-size: 1.6rem; }
   .dropped { color: var(--ink-soft); font-size: 0.92rem; margin: 0 0 1.25rem; }
-
   .downloads { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 2rem; }
 
   .downloads a {
@@ -245,11 +257,14 @@
   }
 
   td { padding: 0.7rem 1rem 0.7rem 0; border-bottom: 1px solid var(--guide); vertical-align: top; }
-
   td.tag { font-family: var(--mono); font-size: 0.82rem; color: var(--ink-soft); padding-right: 0; }
+  td.why { font-size: 0.85rem; color: var(--rule); }
+
+  details { margin-top: 2rem; }
+  details summary { cursor: pointer; color: var(--ink-soft); font-size: 0.92rem; }
+  details[open] summary { margin-bottom: 1rem; }
 
   :focus-visible { outline: 2px solid var(--rule); outline-offset: 2px; }
-
   [hidden] { display: none !important; }
 
   @media (max-width: 34rem) {
@@ -269,83 +284,145 @@
   </header>
 
   <section class="sheet">
-    <form id="form">
+
+    <!-- 1. choose a file -->
+    <div id="step-choose">
       <button type="button" class="drop" id="drop">
         <strong>Drop notes here</strong>
         <span>or click to choose a file</span>
         <small>Markdown, plain text or PDF</small>
       </button>
       <input type="file" id="file" accept=".md,.markdown,.txt,.text,.pdf" hidden>
+      <p class="hint" id="model-hint"></p>
+    </div>
 
-      <div class="chosen" id="chosen" hidden>
-        <span id="chosen-name"></span>
-        <button type="button" id="clear">Remove</button>
+    <!-- 2. reading -->
+    <div id="step-reading" hidden>
+      <h2>Reading your notes</h2>
+      <p class="hint" id="reading-note">This takes a moment. Nothing is sent anywhere.</p>
+    </div>
+
+    <!-- 3. it is a scan -->
+    <div id="step-scan" hidden>
+      <h2>This looks like a scan</h2>
+      <p class="note" id="scan-message"></p>
+      <p class="hint">
+        There is no text in this PDF, only pictures of pages. It can be read with a
+        vision model, but that is slow &mdash; minutes per page unless the model fits
+        in your graphics card&rsquo;s memory.
+      </p>
+      <button class="go" id="scan-go">Read the pictures</button>
+      <button class="plain" id="scan-back">Choose a different file</button>
+    </div>
+
+    <!-- 4. set up the run -->
+    <div id="step-setup" hidden>
+      <h2 id="file-name"></h2>
+      <p class="summary" id="summary"></p>
+      <div id="notices"></div>
+
+      <div class="sections-list" id="sections-list"></div>
+
+      <div class="range">
+        <div>
+          <label for="first">From section</label>
+          <input type="number" id="first" min="1" value="1">
+        </div>
+        <div>
+          <label for="last">To section</label>
+          <input type="number" id="last" min="1" value="1">
+        </div>
+        <p class="hint" id="range-note" style="margin:0 0 0.35rem"></p>
       </div>
 
       <div class="options">
         <div>
           <label for="style">Card style</label>
-          <select id="style" name="style">
+          <select id="style">
             <option value="basic">Question and answer</option>
             <option value="cloze">Fill in the blank</option>
           </select>
         </div>
         <div>
           <label for="model">Model</label>
-          <select id="model" name="model">
-            <option value="">Looking for models</option>
-          </select>
+          <select id="model"><option value="">Looking for models</option></select>
         </div>
         <div>
           <label for="deck">Deck name</label>
-          <input type="text" id="deck" name="deck" placeholder="Same as the file">
+          <input type="text" id="deck" placeholder="Same as the file">
         </div>
         <div>
           <label for="tags">Extra tags</label>
-          <input type="text" id="tags" name="tags" placeholder="bio101 midterm">
+          <input type="text" id="tags" placeholder="bio101 midterm">
         </div>
         <div>
           <label for="max_cards">Cards per section</label>
-          <input type="number" id="max_cards" name="max_cards" value="8" min="1" max="30">
+          <input type="number" id="max_cards" value="8" min="1" max="30">
         </div>
       </div>
 
       <div class="choice">
-        <input type="checkbox" id="check" name="check">
+        <input type="checkbox" id="check">
         <label for="check">
           Read each card back against your notes
           <small>
-            Drops cards the notes do not support, which catches facts the model
+            Drops cards your notes do not support, which catches facts the model
             invented. Takes about 70% longer.
           </small>
         </label>
       </div>
 
-      <button class="go" id="go" type="submit" disabled>Make cards</button>
-      <p class="hint" id="hint"></p>
-    </form>
+      <details id="advanced">
+        <summary>Section size</summary>
+        <p class="hint" style="margin-top:0">
+          Notes are cut into sections at your headings, and anything too big for the
+          model is cut again. Make this smaller for more, shorter sections.
+        </p>
+        <div class="range">
+          <div>
+            <label for="chunk_chars">Characters per section</label>
+            <input type="number" id="chunk_chars" value="4000" min="500" max="20000" step="500">
+          </div>
+          <button class="plain" id="resplit" style="margin-bottom:0.1rem">Split again</button>
+        </div>
+      </details>
 
-    <div id="run" hidden>
-      <ol class="sections" id="sections"></ol>
-      <p class="hint" id="running-note">Working through your notes. This takes a couple of minutes.</p>
+      <p style="margin-top:1.75rem">
+        <button class="go" id="go">Make cards</button>
+        <button class="plain" id="start-over">Choose a different file</button>
+      </p>
+    </div>
+
+    <!-- 5. running -->
+    <div id="step-running" hidden>
+      <ol class="sections" id="progress"></ol>
+      <p class="hint" id="running-note">Working through your notes.</p>
     </div>
 
     <div class="error" id="error" hidden></div>
   </section>
 
+  <!-- 6. results -->
   <section class="results" id="results" hidden>
     <h2 id="count"></h2>
-    <p class="dropped" id="dropped"></p>
+    <p class="dropped" id="dropped-line"></p>
     <div class="downloads">
       <a id="apkg" href="#">Download deck (.apkg)</a>
       <a id="tsv" href="#">Download table (.tsv)</a>
+      <a id="dropped-file" href="#" hidden>Download dropped cards</a>
     </div>
     <table>
-      <thead>
-        <tr><th>Question</th><th>Answer</th><th>Tags</th></tr>
-      </thead>
+      <thead><tr><th>Question</th><th>Answer</th><th>Tags</th></tr></thead>
       <tbody id="cards"></tbody>
     </table>
+
+    <details id="rejects" hidden>
+      <summary id="rejects-summary"></summary>
+      <table>
+        <thead><tr><th>Question</th><th>Answer</th><th>Why it went</th></tr></thead>
+        <tbody id="rejected"></tbody>
+      </table>
+    </details>
   </section>
 </main>
 
@@ -354,47 +431,160 @@
   "use strict";
 
   const el = (id) => document.getElementById(id);
-  const form = el("form");
-  const fileInput = el("file");
-  const drop = el("drop");
-  const chosen = el("chosen");
-  const chosenName = el("chosen-name");
-  const go = el("go");
-  const hint = el("hint");
-  const run = el("run");
-  const sections = el("sections");
-  const results = el("results");
-  const errorBox = el("error");
+  const steps = ["step-choose", "step-reading", "step-scan", "step-setup", "step-running"];
 
-  let selected = null;
+  let chosenFile = null;
+  let preview = null;
   let backend = "ollama";
 
-  function setFile(file) {
-    selected = file;
-    chosen.hidden = !file;
-    drop.hidden = !!file;
-    if (file) chosenName.textContent = file.name;
-    go.disabled = !file;
+  function show(step) {
+    steps.forEach((name) => { el(name).hidden = name !== step; });
   }
 
-  drop.addEventListener("click", () => fileInput.click());
-  el("clear").addEventListener("click", () => { fileInput.value = ""; setFile(null); });
-  fileInput.addEventListener("change", () => setFile(fileInput.files[0] || null));
+  function fail(message) {
+    el("error").textContent = message;
+    el("error").hidden = false;
+  }
+
+  function clearError() { el("error").hidden = true; }
+
+  // --- picking a file -------------------------------------------------------
+
+  el("drop").addEventListener("click", () => el("file").click());
+  el("file").addEventListener("change", () => {
+    if (el("file").files[0]) read(el("file").files[0], false);
+  });
 
   ["dragenter", "dragover"].forEach((name) =>
-    drop.addEventListener(name, (event) => {
+    el("drop").addEventListener(name, (event) => {
       event.preventDefault();
-      drop.classList.add("over");
+      el("drop").classList.add("over");
     })
   );
   ["dragleave", "drop"].forEach((name) =>
-    drop.addEventListener(name, () => drop.classList.remove("over"))
+    el("drop").addEventListener(name, () => el("drop").classList.remove("over"))
   );
-  drop.addEventListener("drop", (event) => {
+  el("drop").addEventListener("drop", (event) => {
     event.preventDefault();
-    const file = event.dataTransfer.files[0];
-    if (file) setFile(file);
+    if (event.dataTransfer.files[0]) read(event.dataTransfer.files[0], false);
   });
+
+  el("scan-back").addEventListener("click", () => { el("file").value = ""; show("step-choose"); });
+  el("start-over").addEventListener("click", () => { el("file").value = ""; show("step-choose"); });
+  el("scan-go").addEventListener("click", () => read(chosenFile, true));
+
+  // --- reading it -----------------------------------------------------------
+
+  function read(file, useOcr) {
+    chosenFile = file;
+    clearError();
+    show("step-reading");
+    el("reading-note").textContent = useOcr
+      ? "Reading the pictures. This is slow; minutes a page is normal."
+      : "This takes a moment. Nothing is sent anywhere.";
+
+    const data = new FormData();
+    data.append("file", file);
+    data.append("ocr", useOcr ? "true" : "false");
+    data.append("chunk_chars", el("chunk_chars").value);
+
+    post("/api/preview", data)
+      .then((body) => {
+        if (body.needs_ocr) {
+          el("scan-message").textContent = body.message;
+          show("step-scan");
+          return;
+        }
+        preview = body;
+        fillSetup(body);
+        show("step-setup");
+      })
+      .catch((problem) => { show("step-choose"); fail(problem.message); });
+  }
+
+  function post(url, data) {
+    return fetch(url, { method: "POST", body: data }).then((response) =>
+      response.ok
+        ? response.json()
+        : response.json().then((body) => Promise.reject(new Error(body.detail || "Failed.")))
+    );
+  }
+
+  // --- setting up -----------------------------------------------------------
+
+  function fillSetup(body) {
+    el("file-name").textContent = body.name;
+    el("summary").innerHTML =
+      "<strong>" + body.total + "</strong> section" + (body.total === 1 ? "" : "s") +
+      ", about " + body.chars.toLocaleString() + " characters.";
+
+    el("notices").innerHTML = "";
+    body.notices.forEach((text) => {
+      const note = document.createElement("p");
+      note.className = "note";
+      note.textContent = text;
+      el("notices").appendChild(note);
+    });
+
+    el("first").max = body.total;
+    el("last").max = body.total;
+    el("first").value = 1;
+    el("last").value = body.total;
+
+    const list = el("sections-list");
+    list.innerHTML = "";
+    body.sections.forEach((section) => {
+      const row = document.createElement("div");
+      row.dataset.number = section.number;
+      row.innerHTML =
+        '<span class="n">' + section.number + '</span>' +
+        '<span class="t"></span>' +
+        '<span class="c">' + section.chars.toLocaleString() + '</span>';
+      row.querySelector(".t").textContent = section.tag;
+      list.appendChild(row);
+    });
+
+    updateRange();
+  }
+
+  function updateRange() {
+    if (!preview) return;
+    const first = Math.max(1, Math.min(Number(el("first").value) || 1, preview.total));
+    const last = Math.max(first, Math.min(Number(el("last").value) || preview.total, preview.total));
+    const count = last - first + 1;
+
+    const overhead = el("check").checked ? preview.check_overhead : 1;
+    const low = Math.round(count * preview.seconds_per_section[0] * overhead);
+    const high = Math.round(count * preview.seconds_per_section[1] * overhead);
+    el("range-note").textContent =
+      count + " section" + (count === 1 ? "" : "s") + ", " + readable(low) + " to " + readable(high);
+
+    Array.from(el("sections-list").children).forEach((row) => {
+      const number = Number(row.dataset.number);
+      row.classList.toggle("out", number < first || number > last);
+    });
+  }
+
+  function readable(seconds) {
+    if (seconds < 90) return seconds + "s";
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 90) return minutes + " min";
+    return (Math.round(minutes / 6) / 10) + " hours";
+  }
+
+  ["first", "last", "check"].forEach((id) =>
+    el(id).addEventListener("input", updateRange)
+  );
+
+  el("resplit").addEventListener("click", () => {
+    const data = new FormData();
+    data.append("chunk_chars", el("chunk_chars").value);
+    post("/api/preview/" + preview.id + "/resplit", data)
+      .then((body) => { preview = body; fillSetup(body); })
+      .catch((problem) => fail(problem.message));
+  });
+
+  // --- models ---------------------------------------------------------------
 
   fetch("/api/models")
     .then((response) => response.json())
@@ -404,7 +594,7 @@
         backend = "fake";
         select.innerHTML = "<option>No model found</option>";
         select.disabled = true;
-        hint.textContent =
+        el("model-hint").textContent =
           "Ollama is not running, so cards will be built by the offline matcher. " +
           "Start Ollama for real results.";
         return;
@@ -419,42 +609,61 @@
         select.appendChild(option);
       });
       select.addEventListener("change", warnAboutModel);
-      warnAboutModel();
     })
     .catch(() => { backend = "fake"; });
 
   function warnAboutModel() {
     const select = el("model");
     const option = select.options[select.selectedIndex];
-    const slow = option && option.dataset.slow === "yes";
-    hint.textContent = slow
-      ? option.value +
-        " reasons at length before answering, which takes minutes per section here. " +
-        "A plain instruct model such as llama3.2 is far quicker and writes better cards."
-      : "";
-  }
-
-  function showError(message) {
-    errorBox.textContent = message;
-    errorBox.hidden = false;
-    run.hidden = true;
-    form.hidden = false;
-    go.disabled = false;
-    go.textContent = "Make cards";
-  }
-
-  function layOutSections(total) {
-    sections.innerHTML = "";
-    for (let i = 0; i < total; i += 1) {
-      const row = document.createElement("li");
-      row.innerHTML = '<span class="what">waiting</span><span class="count"></span>';
-      sections.appendChild(row);
+    el("range-note").dataset.warning = "";
+    if (option && option.dataset.slow === "yes") {
+      fail(option.value + " thinks at length before answering, which takes minutes a section. " +
+           "A plain model like llama3.2 is far quicker and writes better cards.");
+    } else {
+      clearError();
     }
   }
 
-  function fillSections(done) {
+  // --- running --------------------------------------------------------------
+
+  el("go").addEventListener("click", () => {
+    clearError();
+    el("results").hidden = true;
+
+    const data = new FormData();
+    data.append("preview_id", preview.id);
+    data.append("style", el("style").value);
+    data.append("model", el("model").value || "");
+    data.append("backend", backend);
+    data.append("deck", el("deck").value);
+    data.append("tags", el("tags").value);
+    data.append("max_cards", el("max_cards").value);
+    data.append("check", el("check").checked ? "true" : "false");
+    data.append("first", el("first").value);
+    data.append("last", el("last").value);
+
+    post("/api/jobs", data)
+      .then((job) => {
+        el("progress").innerHTML = "";
+        show("step-running");
+        poll(job.id);
+      })
+      .catch((problem) => fail(problem.message));
+  });
+
+  function layOut(total) {
+    const list = el("progress");
+    list.innerHTML = "";
+    for (let i = 0; i < total; i += 1) {
+      const row = document.createElement("li");
+      row.innerHTML = '<span class="what">waiting</span><span class="count"></span>';
+      list.appendChild(row);
+    }
+  }
+
+  function fillProgress(done) {
     done.forEach((section, index) => {
-      const row = sections.children[index];
+      const row = el("progress").children[index];
       if (!row || row.classList.contains("filled")) return;
       row.classList.add("filled");
       row.querySelector(".what").textContent = section.tag;
@@ -462,6 +671,22 @@
         section.cards === 1 ? "1 card" : section.cards + " cards";
     });
   }
+
+  function poll(id) {
+    fetch("/api/jobs/" + id)
+      .then((response) => response.json())
+      .then((job) => {
+        if (job.total && el("progress").children.length !== job.total) layOut(job.total);
+        fillProgress(job.sections);
+
+        if (job.state === "running") { setTimeout(() => poll(id), 700); return; }
+        if (job.state === "error") { show("step-setup"); fail(job.error); return; }
+        finish(job);
+      })
+      .catch(() => { show("step-setup"); fail("Lost contact with notetaker."); });
+  }
+
+  // --- results --------------------------------------------------------------
 
   function describeDropped(counts) {
     const parts = [];
@@ -473,87 +698,53 @@
     return parts.length ? "Set aside: " + parts.join(", ") + "." : "";
   }
 
-  function showResults(job) {
+  function rows(body, items, columns) {
+    body.innerHTML = "";
+    items.forEach((item) => {
+      const row = document.createElement("tr");
+      columns.forEach((column) => {
+        const cell = document.createElement("td");
+        if (column.className) cell.className = column.className;
+        cell.textContent = column.value(item);
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    });
+  }
+
+  function finish(job) {
     el("count").textContent =
       job.cards.length === 1 ? "1 card" : job.cards.length + " cards";
-    el("dropped").textContent = describeDropped(job.counts);
+    el("dropped-line").textContent = describeDropped(job.counts);
     el("apkg").href = "/api/jobs/" + job.id + "/deck.apkg";
     el("tsv").href = "/api/jobs/" + job.id + "/deck.tsv";
 
-    const body = el("cards");
-    body.innerHTML = "";
-    job.cards.forEach((card) => {
-      const row = document.createElement("tr");
-      const question = document.createElement("td");
-      const answer = document.createElement("td");
-      const tags = document.createElement("td");
-      tags.className = "tag";
-      question.textContent = card.question;
-      answer.textContent = card.answer;
-      tags.textContent = card.tags.join(" ");
-      row.append(question, answer, tags);
-      body.appendChild(row);
-    });
+    rows(el("cards"), job.cards, [
+      { value: (card) => card.question },
+      { value: (card) => card.answer },
+      { className: "tag", value: (card) => card.tags.join(" ") },
+    ]);
 
-    results.hidden = false;
-    el("running-note").hidden = true;
-    results.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (job.rejected.length) {
+      el("rejects").hidden = false;
+      el("rejects-summary").textContent =
+        "Show the " + job.rejected.length + " cards that were thrown away";
+      el("dropped-file").hidden = false;
+      el("dropped-file").href = "/api/jobs/" + job.id + "/deck.dropped.tsv";
+      rows(el("rejected"), job.rejected, [
+        { value: (item) => item.question },
+        { value: (item) => item.answer },
+        { className: "why", value: (item) => item.reason },
+      ]);
+    } else {
+      el("rejects").hidden = true;
+      el("dropped-file").hidden = true;
+    }
+
+    show("step-setup");
+    el("results").hidden = false;
+    el("results").scrollIntoView({ behavior: "smooth", block: "start" });
   }
-
-  function poll(id) {
-    fetch("/api/jobs/" + id)
-      .then((response) => response.json())
-      .then((job) => {
-        if (job.total && sections.children.length !== job.total) layOutSections(job.total);
-        fillSections(job.sections);
-
-        if (job.state === "running") {
-          setTimeout(() => poll(id), 700);
-          return;
-        }
-        if (job.state === "error") {
-          showError(job.error);
-          return;
-        }
-        showResults(job);
-      })
-      .catch(() => showError("Lost contact with notetaker. Is the server still running?"));
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    if (!selected) return;
-
-    errorBox.hidden = true;
-    results.hidden = true;
-    el("running-note").hidden = false;
-    go.disabled = true;
-    go.textContent = el("check").checked ? "Making and checking cards" : "Making cards";
-
-    const data = new FormData();
-    data.append("file", selected);
-    data.append("style", el("style").value);
-    data.append("model", el("model").value || "");
-    data.append("backend", backend);
-    data.append("deck", el("deck").value);
-    data.append("tags", el("tags").value);
-    data.append("max_cards", el("max_cards").value);
-    data.append("check", el("check").checked ? "true" : "false");
-
-    fetch("/api/jobs", { method: "POST", body: data })
-      .then((response) =>
-        response.ok
-          ? response.json()
-          : response.json().then((body) => Promise.reject(new Error(body.detail)))
-      )
-      .then((job) => {
-        form.hidden = true;
-        run.hidden = false;
-        sections.innerHTML = "";
-        poll(job.id);
-      })
-      .catch((problem) => showError(problem.message || "Could not start."));
-  });
 })();
 </script>
 </body>

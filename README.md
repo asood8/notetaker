@@ -8,123 +8,77 @@ of it isn't really thinking. You read a paragraph, you pull out the three
 things worth remembering, you type them into two boxes. A small model can do
 that part.
 
-![The web interface, with a file chosen](docs/images/web-form.jpg)
+![Choosing what to turn into cards](docs/images/web-setup.jpg)
 
-## Getting it running
+## Getting started
 
-You'll need Python 3.11 or newer and Ollama with a model pulled:
+You need Python 3.11 or newer, and Ollama with a model pulled.
 
 ```console
 $ ollama pull llama3.2
-$ pip install -e .
-$ notetaker cards notes/bio-ch3.md
+$ pip install -e ".[web]"
+$ notetaker serve
 ```
 
-That's it. There's a `--llm fake` mode too, which doesn't use a model at all —
-it's a crude sentence matcher I wrote so the tests could run without Ollama,
-but it's also handy if you just want to see what the output looks like before
-downloading a few gigabytes.
+Open the address it prints, drop a file on the page, and go. Markdown, plain
+text and PDFs all work.
 
-A run looks like this:
+Dropping a file doesn't start anything. It reads your notes, splits them at
+your headings, and tells you what it found: how many sections, what they're
+called, and how long making cards from them would take. My own lecture slides
+turn out to be 497 sections and about four hours, which is worth knowing before
+you start rather than after.
 
-```console
-$ notetaker cards examples/sample_notes.md
+Then you pick how much of it you want. All of it, or sections 10 to 40 if you
+only care about one lecture.
 
-  reading   examples/sample_notes.md  (4 sections, 1568 chars)
-  model     ollama/llama3.2
-  style     basic
-  estimate  roughly 60s to 2 min
+### Watching it work
 
-  [1/4] Cell_Biology::The_Cell_Membrane  ->  5 cards
-  [2/4] Cell_Biology::Transport  ->  4 cards
-  [3/4] Cellular_Respiration::Glycolysis  ->  6 cards
-  [4/4] Cellular_Respiration::The_Krebs_Cycle  ->  5 cards
-
-  generated 20 cards  (4 low-quality dropped)
-
-  out/sample_notes.apkg   double-click to import
-  out/sample_notes.tsv    or use File > Import
-```
-
-You get two files. Double-click the `.apkg` and Anki does the rest. The `.tsv`
-is for when you'd rather look the cards over in a spreadsheet first, which I
-end up doing more often than not.
-
-Your markdown headings turn into Anki tags, so `## Transport` under
-`# Cell Biology` becomes `Cell_Biology::Transport` and your deck keeps whatever
-structure your notes already had.
-
-## Options
-
-```
-notetaker cards NOTES [OPTIONS]        # NOTES is .md, .txt or .pdf
-
-  --out, -o PATH     Where to write            [default: out]
-  --model TEXT       Ollama model tag          [default: llama3.2]
-  --style TEXT       basic or cloze            [default: basic]
-  --sections RANGE   Which sections to use, e.g. 10-40, 10-, -3, 12
-  --check            Read each card back against your notes
-  --deck TEXT        Anki deck name            [default: the file name]
-  --tag TEXT         Extra tag, repeatable
-  --max-cards INT    Cards per section         [default: 8]
-  --chunk-chars INT  Notes per model call      [default: 4000]
-  --llm TEXT         ollama or fake            [default: ollama]
-```
-
-If you'd rather not think about flags, `pip install -e ".[web]"` and then
-`notetaker serve` gives you a page to drop a file onto.
-
-## Looking before you leap
-
-Long documents take a while, so there's a command that tells you what you're in
-for without calling a model at all:
-
-```console
-$ notetaker inspect lectures/neuro301.md
-
-  reading   lectures/neuro301.md  (9 sections, 11,595 chars)
-
-  [  1] Neuroscience_301                                 54 chars
-  [  2] Neuroscience_301::Resting_Potential           1,678 chars
-  [  3] Neuroscience_301::Action_Potentials             537 chars
-  ...
-
-  largest   2,492 chars
-  estimate  roughly 2 min to 5 min to generate
-            roughly 4 min to 9 min with --check
-```
-
-Those section numbers are what `--sections` takes, so you can work through
-something big a lecture at a time:
-
-```console
-$ notetaker cards lectures.pdf --sections -3        # a first look
-$ notetaker cards lectures.pdf --sections 10-40     # one lecture
-$ notetaker cards lectures.pdf --sections 41-       # the rest
-```
-
-Each range writes its own files (`lectures.10-40.apkg`) so runs don't overwrite
-each other, and every run ends by telling you the range to ask for next. I added
-this after pointing it at a 500-section slide deck and realising a single run
-would take about five hours.
-
-## Watching it work
-
-The web page shows every section up front and fills them in as the model
-finishes with them. A spinner would tell you nothing, and these runs are slow
-enough that you want to see something happening.
+Every section is listed up front and fills in as the model finishes with it.
 
 ![Sections filling in one at a time](docs/images/web-progress.jpg)
 
-When it's done you get the cards in a table and two download buttons.
+At the end you get the cards in a table and two files to download. Double-click
+the `.apkg` and Anki takes care of the rest. The `.tsv` is for when you'd rather
+look things over in a spreadsheet first.
 
 ![The finished cards](docs/images/web-results.jpg)
+
+Your headings become Anki tags, so `## Transport` under `# Cell Biology` comes
+out as `Cell_Biology::Transport` and the deck keeps whatever structure your
+notes already had.
+
+## From the terminal
+
+Everything works from the command line too:
+
+```console
+$ notetaker cards notes/bio-ch3.md
+$ notetaker cards lectures.pdf --sections 10-40 --check --deck "Bio::Week 3"
+$ notetaker inspect lectures.pdf            # what's in there, without running anything
+```
+
+```
+  --model TEXT       Ollama model tag          [default: llama3.2]
+  --style TEXT       basic or cloze            [default: basic]
+  --sections RANGE   10-40, 10-, -3, or 12
+  --check            Read each card back against your notes
+  --deck TEXT        Anki deck name
+  --tag TEXT         Extra tag, repeatable
+  --max-cards INT    Cards per section         [default: 8]
+  --ocr              Read a scanned PDF with a vision model
+  --out, -o PATH     Where to write            [default: out]
+```
+
+The page has all of these except a few tuning knobs (`--num-ctx`, `--timeout`,
+`--chunk-chars` is there as "section size"). `notetaker cards --help` lists the
+rest.
 
 ## Which model
 
 This surprised me: bigger is worse here. Pulling facts out of a paragraph isn't
-a reasoning problem, and a 3B instruct model does it about as well as a 7B one
-and several times faster.
+a reasoning problem, and a 3B model does it about as well as a 7B one and
+several times faster.
 
 | Model | Per call | Notes |
 | --- | --- | --- |
@@ -134,12 +88,11 @@ and several times faster.
 | `qwen3.5`, `deepseek-r1` | 280s+ | Don't |
 
 Reasoning models are the trap. `qwen3.5:9b` spent over four minutes on a single
-four-sentence section with the model already loaded, which works out at about an
-hour for a normal set of notes. The obvious fix, passing `think: false`, makes
-it stop honouring the JSON schema entirely and reply in markdown instead. So
-notetaker never sends `think` and just warns you when you pick one of these.
+four-sentence section with the model already loaded. Passing `think: false`
+makes it faster and also makes it stop honouring the JSON schema, so notetaker
+never sends it and just warns you when you pick one.
 
-Longer version with actual numbers in [docs/model-notes.md](docs/model-notes.md).
+More detail and actual numbers in [docs/model-notes.md](docs/model-notes.md).
 
 ## Cards it throws away
 
@@ -147,95 +100,77 @@ Duplicates go, including the annoying kind where the same fact is asked from
 both directions. So does anything you could guess: yes/no questions, questions
 asking two things at once, answers that are a paragraph.
 
+Everything dropped is written to a `.dropped.tsv` file with the reason, and
+shown on the page, so you can check the filters aren't eating things they
+shouldn't.
+
 That last bit is enforced in code rather than in the prompt, because asking
 politely didn't work. The prompt tells the model not to write yes/no questions,
 with an example, and `llama3.2` wrote four of them anyway in a four-section
-document. Small models are bad at being told not to do things.
+document.
 
 ## Checking cards against your notes
 
-```console
-$ notetaker cards notes.pdf --check
-```
+Tick "read each card back against your notes", or pass `--check`. Every card
+gets read back against the section it came from, and the ones the passage
+doesn't support are dropped.
 
-This reads every card back against the section it came from and drops the ones
-the passage doesn't support.
-
-It's worth it because the failure that actually hurts isn't an ugly card, it's a
-confident wrong one. From a nearly empty slide, `llama3.2` gave me:
+The failure that actually hurts isn't an ugly card, it's a confident wrong one.
+From a nearly empty slide, `llama3.2` gave me:
 
 > Which sex chromosome determines male characteristics? → X
 
-It's the Y chromosome. The card looks perfectly fine, so no rule about its shape
-will ever catch it. What catches it is that the slide never said it — the model
-filled an empty slide from memory. Ask the same model whether the passage
-supports the card and make it quote the words, and it throws it out.
+It's the Y chromosome. The card looks fine, so no rule about its shape will
+catch it. What catches it is that the slide never said it. Ask the same model
+whether the passage supports the card and make it quote the words, and it
+throws it out.
 
-Worth being clear about what this isn't. It doesn't check facts. If your notes
-are wrong, a card faithfully repeating them sails through. And it's the same
-model doing the checking, so it's a filter, not a guarantee.
-
-If the model is unreachable or answers with nonsense, every card is kept. A
-broken checker emptying your deck would be much worse than no checker. It costs
-about 70% more time (170s against 282s over the same three sections), so it's
-off unless you ask for it.
+It doesn't check facts, though. If your notes are wrong, a card faithfully
+repeating them sails through. And it's the same model doing the checking, so
+it's a filter rather than a guarantee. If the model can't be reached, every card
+is kept — a broken checker emptying your deck would be worse than no checker.
+Costs about 70% more time, so it's off unless you ask.
 
 ## PDFs
 
-`.md`, `.txt` and `.pdf` all work. PDFs don't have headings in any structural
-sense, but they usually have them visually — a short line sitting on its own
-above a paragraph — and those get recovered and used for tags.
+PDFs don't have headings in any structural sense, but they usually have them
+visually — a short line on its own above a paragraph — and those get recovered
+and used for tags.
 
-A few things I learned the hard way feeding it real lecture slides:
+A few things I learned feeding it real lecture slides. Text comes out in layout
+mode, because the default drops the blank lines between paragraphs and a whole
+page arrives as one run-on block. Anything printed on lots of pages gets
+stripped first: my slides had the lecturer's name on every one, which looked
+exactly like a heading, and 93 sections ended up tagged `Dr_Sollars`. And some
+PDFs have rotated text that can't be read at all, so it tells you how many pages
+are affected.
 
-Text gets extracted in layout mode, because the default drops the blank lines
-between paragraphs and a whole page arrives as one run-on block.
-
-Anything printed on lots of pages gets stripped before headings are worked out.
-My slides had the lecturer's name on every one, which is short and unpunctuated
-with prose underneath, so it looked exactly like a heading and 93 sections ended
-up tagged `Dr_Sollars`.
-
-Some PDFs have rotated text that pypdf can't read. It'll tell you how many pages
-are affected, because it means those cards are missing content.
-
-### Scans
-
-If there's no text layer at all, `--ocr` renders each page and reads it with a
-local vision model. Fair warning on two counts. It needs the model to fit in
-your GPU's memory — on mine it didn't, Ollama put it on the CPU, and a single
-page took over four minutes. Run `ollama ps` and look at `size_vram`; if it's 0,
-go make a coffee. And a vision model that misreads gives you a plausible wrong
-word rather than obvious garbage, which is worse when you're going to memorise
-it.
+If there's no text layer, the page offers to read the pictures with a vision
+model (`--ocr` from the terminal). Two warnings. It needs the model to fit in
+your graphics card's memory — on mine it didn't, and a single page took over
+four minutes. And a vision model that misreads gives you a plausible wrong word
+rather than obvious nonsense, which is worse when you're about to memorise it.
 
 ## Development
 
 ```console
 $ pip install -e ".[dev,web,ocr]"
 $ pytest                  # all offline, no Ollama needed
-$ pytest -m integration   # these hit a real model
 $ ruff check . && ruff format --check .
 ```
 
-The whole suite runs without Ollama because everything talks to a small
-`LLMClient` protocol, so the tests use stubs and a mocked HTTP transport. Only
-the integration-marked ones need a live model, and CI never runs those.
+The suite runs without Ollama because everything talks to a small `LLMClient`
+protocol, so tests use stubs and a mocked HTTP transport. The few that need a
+live model are marked `integration` and CI never runs them.
 
 There's also `scripts/compare_models.py`, which runs the same notes through
-several models and prints the cards so you can judge them yourself:
-
-```console
-$ python scripts/compare_models.py --models llama3.2 llama3.1:8b --show-cards
-```
+several models and prints the cards so you can judge them yourself.
 
 ## Still to do
 
-- The checker's rejection rate looks high (about a third) and I haven't
-  properly worked out whether that's correct or too eager
-- `inspect` only lists the first 30 sections, which makes finding a range in
-  the middle of a long document awkward
-- Rejected cards are counted but not written anywhere, so you can't review them
+- The checker drops about a third of cards and I haven't worked out whether
+  that's right or too eager
+- No way to edit a card before it goes into the deck
 
 ## License
 

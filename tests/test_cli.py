@@ -282,8 +282,15 @@ def test_an_unusable_range_is_refused(tmp_path: Path, spec: str) -> None:
 
 
 def test_durations_read_naturally() -> None:
-    from notetaker.cli import _duration, estimate
+    from notetaker.timing import duration, estimate
 
-    assert _duration(45) == "45s"
-    assert _duration(600) == "10 min"
+    assert duration(45) == "45s"
+    assert duration(600) == "10 min"
+    assert duration(18000) == "5.0 hours"
     assert "to" in estimate(4)
+
+
+def test_checking_makes_the_estimate_longer() -> None:
+    from notetaker.timing import estimate
+
+    assert estimate(100) != estimate(100, check=True)

@@ -11,7 +11,7 @@ import typer
 
 from notetaker import __version__
 from notetaker.chunking import DEFAULT_MAX_CHARS, Chunk, chunk_markdown
-from notetaker.export import write_apkg, write_tsv
+from notetaker.export import write_apkg, write_rejects, write_tsv
 from notetaker.generate import (
     DEFAULT_MAX_CARDS_PER_CHUNK,
     GenerationResult,
@@ -36,19 +36,10 @@ from notetaker.ocr import (
 )
 from notetaker.reader import UnreadableNotes, read_notes
 from notetaker.styles import STYLES, Style
+from notetaker.timing import estimate
 from notetaker.verify import check_cards
 
-SECONDS_PER_SECTION = (15, 35)
-"""How long one section takes, roughly, measured on a small instruct model.
-
-Only ever used to set expectations before a long run. A bigger model, a slower
-machine or a reasoning model will all leave this range behind.
-"""
-
 SECTION_RANGE_RE = re.compile(r"^(\d*)\s*-\s*(\d*)$")
-
-CHECK_OVERHEAD = 1.7
-"""What --check adds. Measured: 170s against 282s over the same three sections."""
 
 MAX_LISTED_SECTIONS = 30
 
@@ -196,6 +187,10 @@ def cards(
     typer.echo(f"  {apkg_path}   double-click to import")
     typer.echo(f"  {tsv_path}   or use File > Import")
 
+    if result.rejected:
+        rejects_path = write_rejects(result.rejected, out / f"{stem}.dropped.tsv")
+        typer.echo(f"  {rejects_path}   what was thrown away, and why")
+
     if last < total_sections:
         typer.echo("")
         typer.echo(f"  next      --sections {last + 1}-{total_sections}")
@@ -216,6 +211,10 @@ def inspect(
     ocr_model: Annotated[
         str, typer.Option("--ocr-model", help="Vision model used for scans.")
     ] = DEFAULT_VISION_MODEL,
+    sections: Annotated[
+        str | None,
+        typer.Option("--sections", help="Which sections to list, e.g. 100-160 or 31-."),
+    ] = None,
 ) -> None:
     """Show how a file will be split up, without calling a model.
 
@@ -238,13 +237,21 @@ def inspect(
     typer.echo(f"  reading   {notes}  ({len(chunks)} sections, {len(text):,} chars)")
     typer.echo("")
 
-    for number, chunk in enumerate(chunks[:MAX_LISTED_SECTIONS], start=1):
+    # Without a range, show an opening sample. With one, show all of it: the
+    # reason to ask for a range is to read it.
+    if sections:
+        first, last = parse_sections(sections, len(chunks))
+    else:
+        first, last = 1, min(MAX_LISTED_SECTIONS, len(chunks))
+
+    for number in range(first, last + 1):
+        chunk = chunks[number - 1]
         label = chunk.tag or "(no heading)"
         typer.echo(f"  [{number:>3}] {label:<44} {len(chunk.text):>6,} chars")
 
-    hidden = len(chunks) - MAX_LISTED_SECTIONS
+    hidden = len(chunks) - last
     if hidden > 0:
-        typer.echo(f"        and {hidden} more")
+        typer.echo(f"        and {hidden} more, with --sections {last + 1}-")
 
     untagged = sum(1 for chunk in chunks if not chunk.tag)
     largest = max(len(chunk.text) for chunk in chunks)
@@ -291,20 +298,6 @@ def parse_sections(spec: str, total: int) -> tuple[int, int]:
         raise typer.BadParameter(f"there are only {total} sections")
 
     return first, min(last, total)
-
-
-def estimate(sections: int, *, check: bool = False) -> str:
-    """A range, deliberately wide. Anything narrower would be pretending."""
-    overhead = CHECK_OVERHEAD if check else 1
-    low, high = (round(sections * seconds * overhead) for seconds in SECONDS_PER_SECTION)
-    return f"roughly {_duration(low)} to {_duration(high)}"
-
-
-def _duration(seconds: int) -> str:
-    if seconds < 90:
-        return f"{seconds}s"
-    minutes = round(seconds / 60)
-    return f"{minutes} min"
 
 
 def _progress(total: int) -> Callable[[Chunk, int], None]:
