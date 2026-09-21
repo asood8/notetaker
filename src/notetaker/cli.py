@@ -401,6 +401,7 @@ def _notes_on(result: GenerationResult) -> str:
     counts = (
         ("duplicate", result.duplicates),
         ("low-quality", result.low_quality),
+        ("admin section", result.skipped_sections),
         ("unsupported", result.unsupported),
         ("invalid", result.invalid_responses),
         ("failed", result.failed_chunks),

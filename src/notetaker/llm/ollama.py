@@ -27,7 +27,7 @@ import httpx
 from notetaker.llm.base import LLMError
 
 DEFAULT_HOST = "http://localhost:11434"
-DEFAULT_MODEL = "llama3.2"
+DEFAULT_MODEL = "llama3.1:8b"
 DEFAULT_NUM_CTX = 8192
 DEFAULT_TIMEOUT = 180.0
 DEFAULT_SEED = 7

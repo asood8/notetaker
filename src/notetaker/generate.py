@@ -12,7 +12,7 @@ from notetaker.dedup import Deduper
 from notetaker.llm.base import LLMClient, LLMError
 from notetaker.models import Card
 from notetaker.prompts import build_prompt
-from notetaker.quality import rejection_reason
+from notetaker.quality import is_admin_section, rejection_reason
 from notetaker.styles import BASIC, Style
 
 DEFAULT_MAX_CARDS_PER_CHUNK = 8
@@ -35,6 +35,7 @@ class GenerationResult:
     rejected: list[Rejected] = field(default_factory=list)
     duplicates: int = 0
     low_quality: int = 0
+    skipped_sections: int = 0
     unsupported: int = 0
     invalid_responses: int = 0
     failed_chunks: int = 0
@@ -61,6 +62,14 @@ def generate_cards(
     schema = style.batch.model_json_schema()
 
     for chunk in chunks:
+        # Course admin is recognised from the heading, so the model is never
+        # asked about it. Cheaper than generating cards and throwing them away,
+        # and it keeps exam dates out of the deck entirely.
+        if is_admin_section(chunk.heading_path):
+            result.skipped_sections += 1
+            _report(on_chunk, chunk, 0)
+            continue
+
         system, user = build_prompt(
             chunk,
             max_cards_per_chunk,

@@ -725,6 +725,8 @@
     const parts = [];
     if (counts.duplicates) parts.push(counts.duplicates + " repeated");
     if (counts.low_quality) parts.push(counts.low_quality + " too weak to keep");
+    if (counts.skipped_sections)
+      parts.push(counts.skipped_sections + " sections skipped as course admin");
     if (counts.unsupported) parts.push(counts.unsupported + " not supported by your notes");
     if (counts.invalid) parts.push(counts.invalid + " unreadable replies");
     if (counts.failed) parts.push(counts.failed + " sections failed");

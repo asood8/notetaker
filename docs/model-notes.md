@@ -254,6 +254,32 @@ keeps every card, because a broken check must never be able to empty a deck.
 It verifies fidelity to your notes, not truth -- notes that are wrong will
 produce cards that pass.
 
+## Course admin is not course material
+
+Feeding it a real course's slides produced a run whose cards were largely
+worthless, and not because the model misread anything. It read the slides
+correctly. The slides were about the course:
+
+> When is Exam 1 scheduled? -> Thursday, February 19th
+> What day is staff giving support on Exam 1 review? -> Wed
+> Which section gets additional Engagement Points? -> The one with the highest total score
+> What is the optional chapter for floats? -> Ch 2.4
+
+Every one of those came from a section tagged `Logistics` or `Announcements`,
+which is the whole fix: the heading already says the slide is about running the
+course. Those sections are now skipped before the model is called, which also
+saves the time spent generating cards only to throw them away.
+
+Picking the heading words took more care than expected. `schedule`, `grading`
+and `logistic` all look obviously administrative until you picture the deck
+they turn up in -- sleep schedules, tumour grading, logistic regression -- so
+the list is deliberately short and the card-level rules catch the rest. Those
+rules reject a question about a date whose answer is a date, and anything
+mentioning office hours, deadlines, marking or engagement points.
+
+The prompt asks for this too, but as everywhere else in this project the prompt
+is not what guarantees it.
+
 ## Reproducing
 
 ```console

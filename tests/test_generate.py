@@ -119,3 +119,18 @@ def test_an_explicitly_empty_card_list_is_accepted() -> None:
     result = generate_cards(chunks("a"), StubLLM({"cards": []}))
     assert result.cards == []
     assert result.invalid_responses == 0
+
+
+def test_admin_sections_never_reach_the_model() -> None:
+    from notetaker.chunking import Chunk
+
+    client = StubLLM({"cards": [card("When is Exam 1?", "February 19th")]})
+    chunks = [
+        Chunk(text="Exam 1 is on February 19th.", heading_path=("Logistics",)),
+        Chunk(text="Osmosis is the diffusion of water.", heading_path=("Transport",)),
+    ]
+
+    result = generate_cards(chunks, client)
+
+    assert client.calls == 1, "the admin section should not have been sent"
+    assert result.skipped_sections == 1

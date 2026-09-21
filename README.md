@@ -17,14 +17,14 @@ On Windows, without using a terminal:
    **Add python.exe to PATH** during setup.
 2. Install [Ollama](https://ollama.com/download).
 3. Double-click **setup.bat**. It installs everything and downloads the model,
-   which is about 2 GB, so it takes a while. This is a one-time thing.
+   which is about 5 GB, so it takes a while. This is a one-time thing.
 4. Double-click **start-notetaker.bat** whenever you want to make cards. Your
    browser opens by itself. Closing the black window stops it.
 
 Anywhere else, or if you'd rather do it yourself:
 
 ```console
-$ ollama pull llama3.2
+$ ollama pull llama3.1:8b
 $ pip install -e ".[web]"
 $ notetaker serve
 ```
@@ -71,7 +71,7 @@ $ notetaker inspect lectures.pdf            # what's in there, without running a
 ```
 
 ```
-  --model TEXT       Ollama model tag          [default: llama3.2]
+  --model TEXT       Ollama model tag          [default: llama3.1:8b]
   --style TEXT       basic or cloze            [default: basic]
   --sections RANGE   10-40, 10-, -3, or 12
   --check            Read each card back against your notes
@@ -88,14 +88,17 @@ rest.
 
 ## Which model
 
-Bigger is worse here, which is not what you would expect. Pulling facts out of
-a paragraph isn't a reasoning problem, and a 3B model does it about as well as
-a 7B one and several times faster.
+The default is `llama3.1:8b`. A 3B model is three times faster and produces
+noticeably worse cards on real lecture notes, so the extra wait is worth it if
+the machine can take it. `--model llama3.2` if it can't.
+
+What does not help is going further up. Bigger is not reliably better at this,
+because pulling facts out of a paragraph isn't a reasoning problem.
 
 | Model | Per call | Notes |
 | --- | --- | --- |
-| `llama3.2` (3B) | ~13s | Best of the lot. The default. |
-| `llama3.1:8b` | ~40s | Slightly better coverage, writes list answers |
+| `llama3.1:8b` | ~40s | The default. Better cards, worth the wait. |
+| `llama3.2` (3B) | ~13s | Much faster, noticeably rougher cards |
 | `phi4-mini:3.8b` | ~20s | Fine, but writes compound questions |
 | `qwen3.5`, `deepseek-r1` | 280s+ | Don't |
 
@@ -111,6 +114,13 @@ More detail and actual numbers in [docs/model-notes.md](docs/model-notes.md).
 Duplicates go, including the annoying kind where the same fact is asked from
 both directions. So does anything you could guess: yes/no questions, questions
 asking two things at once, answers that are a paragraph.
+
+Course admin goes too. Lecture decks are full of slides about exam dates,
+office hours and how engagement points are awarded, and a model handed one of
+those will cheerfully write "When is Exam 1 scheduled? -> Thursday, February
+19th". Sections headed Logistics, Announcements, Syllabus and the like are
+skipped without asking the model at all, and admin questions that come from a
+slide with an innocent heading are dropped afterwards.
 
 Everything dropped is written to a `.dropped.tsv` file with the reason, and
 shown on the page, so you can check the filters aren't eating things they

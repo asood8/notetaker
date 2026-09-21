@@ -110,3 +110,62 @@ def test_questions_about_the_teaching_material_are_rejected(question: str) -> No
     # The answer deliberately shares no word with the question, so this tests
     # the meta rule rather than the one about a card answering itself.
     assert rejection_reason(card(question, "Several subjects")) == "question about the document"
+
+
+# --- course admin, reported from a real run -----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("question", "answer"),
+    [
+        ("When is Exam 1 scheduled?", "Thursday, February 19th"),
+        ("What day is staff giving support on Exam 1 review?", "Wed"),
+        ("Which section gets additional Engagement Points?", "The one with the highest score"),
+        ("When are office hours?", "Monday at 3pm"),
+        ("What is the due date for homework 2?", "March 4"),
+        ("How many points is the final worth?", "30"),
+    ],
+)
+def test_course_admin_is_not_study_material(question: str, answer: str) -> None:
+    reason = rejection_reason(card(question, answer))
+    assert reason == "course admin, not course material"
+
+
+@pytest.mark.parametrize(
+    ("question", "answer"),
+    [
+        ("When is ATP produced during respiration?", "In oxidative phosphorylation"),
+        ("What type of numbers can be signed or unsigned?", "Integers"),
+        ("When does the cell enter prophase?", "After interphase"),
+        ("What day-neutral process breaks down glucose?", "Glycolysis"),
+    ],
+)
+def test_real_facts_that_mention_time_are_kept(question: str, answer: str) -> None:
+    assert rejection_reason(card(question, answer)) is None
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [("Logistics",), ("Announcements",), ("Course Logistics",), ("Syllabus",), ("Reminders",)],
+)
+def test_admin_sections_are_recognised(heading: tuple[str, ...]) -> None:
+    from notetaker.quality import is_admin_section
+
+    assert is_admin_section(heading)
+
+
+@pytest.mark.parametrize(
+    "heading",
+    [
+        ("Bit Operations",),
+        ("Biology", "Sleep Schedule"),
+        ("Pathology", "Tumour Grading"),
+        ("Statistics", "Logistic Regression"),
+        ("Cell_Biology", "Transport"),
+    ],
+)
+def test_subject_matter_is_not_mistaken_for_admin(heading: tuple[str, ...]) -> None:
+    # Each of these contains a word that looks administrative out of context.
+    from notetaker.quality import is_admin_section
+
+    assert not is_admin_section(heading)

@@ -57,6 +57,37 @@ _DANGLING_TEXT = (
 DANGLING_WORDS = frozenset(_DANGLING_TEXT.split())
 """Words a sentence does not end on. A cloze ending here was cut off."""
 
+_ADMIN_HEADING_TEXT = (
+    "logistics announcements announcement syllabus administrivia housekeeping reminders admin"
+)
+ADMIN_HEADINGS = frozenset(_ADMIN_HEADING_TEXT.split())
+"""Heading words that mean a slide is about running the course, not its subject.
+
+Real lecture decks carry these: exam dates, office hours, how engagement points
+are awarded. A model handed one of those slides dutifully writes "When is Exam 1
+scheduled?", which is a fact about February rather than about the material, and
+which is worthless a week after the exam.
+
+Kept short on purpose. "Schedule", "grading" and "logistic" all looked like
+obvious members until you picture the decks they appear in: sleep schedules,
+tumour grading, logistic regression. A word earns a place here only if it is
+hard to imagine as subject matter, and the card-level rules below catch what
+slips through.
+"""
+
+ADMIN_WORDS_RE = re.compile(
+    r"\b(office hours|due date|deadline|syllabus|engagement points|extra credit"
+    r"|grading policy|attendance|exam is scheduled|midterm is|final is"
+    r"|which section gets|how many points)\b",
+    re.IGNORECASE,
+)
+WHEN_RE = re.compile(r"^(when|what day|what date|what time|which day|which week)\b", re.IGNORECASE)
+DATE_ANSWER_RE = re.compile(
+    r"^(mon|tue|wed|thu|fri|sat|sun|january|february|march|april|may|june|july"
+    r"|august|september|october|november|december|week \d|\d{1,2}/\d{1,2})",
+    re.IGNORECASE,
+)
+
 MAX_ANSWER_WORDS = 40
 MIN_REVEALING_LENGTH = 4
 """Shorter than this, a shared word is coincidence rather than a giveaway."""
@@ -72,10 +103,32 @@ def rejection_reason(card: Card) -> str | None:
     return _basic_reason(card)
 
 
+def is_admin_section(heading_path: tuple[str, ...]) -> bool:
+    """Whether a section is about running the course rather than its subject.
+
+    Checked per heading word rather than as a substring, so a section called
+    "Sleep Schedule" in a physiology deck is not mistaken for a timetable.
+    """
+    for heading in heading_path:
+        words = {word.strip(":.,-").lower() for word in re.split(r"[\s_]+", heading)}
+        if words & ADMIN_HEADINGS:
+            return True
+    return False
+
+
+def _is_course_admin(question: str, answer: str) -> bool:
+    """Catch admin cards that come from a slide with an innocent heading."""
+    if ADMIN_WORDS_RE.search(question):
+        return True
+    return bool(WHEN_RE.match(question) and DATE_ANSWER_RE.match(answer))
+
+
 def _basic_reason(card: Card) -> str | None:
     question = card.question.strip()
     answer = card.answer.strip()
 
+    if _is_course_admin(question, answer):
+        return "course admin, not course material"
     if BOOLEAN_ANSWER_RE.match(answer):
         return "yes/no answer"
     if NON_ANSWER_RE.match(answer) or _is_a_stray_word(answer):

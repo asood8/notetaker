@@ -414,6 +414,7 @@ def _run(
         counts={
             "duplicates": result.duplicates,
             "low_quality": result.low_quality,
+            "skipped_sections": result.skipped_sections,
             "unsupported": result.unsupported,
             "invalid": result.invalid_responses,
             "failed": result.failed_chunks,

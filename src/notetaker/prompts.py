@@ -29,6 +29,10 @@ Rules:
   follow-ups such as "if so, which?".
 - Never write meta-questions about the document itself, such as "What does
   this section cover?" or "What is listed in the notes?".
+- Ignore anything about running the course rather than its subject: exam dates,
+  office hours, deadlines, marking, how points are awarded, what is on which
+  handout. "When is Exam 1 scheduled?" is not something to study. If a passage
+  is entirely of this kind, return no cards at all.
 - Answers are short: a phrase or a single sentence, not a paragraph. Give the
   fact itself, not a sentence restating the question.
 - Do not write two cards that state the same fact in reverse.
@@ -62,6 +66,9 @@ Rules:
   reading only the visible words should know what kind of thing is hidden.
 - Keep each sentence short and self-contained. Do not refer to "the above" or
   "this section".
+- Ignore anything about running the course rather than its subject: exam dates,
+  office hours, deadlines, marking, how points are awarded. If a passage is
+  entirely of that kind, return no cards at all.
 - Use only what the notes state. Do not add outside knowledge.
 - If a passage contains nothing worth memorizing, return no cards for it."""
 

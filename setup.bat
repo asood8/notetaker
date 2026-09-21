@@ -42,17 +42,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
-ollama list 2>nul | findstr /i "llama3.2" >nul
+ollama list 2>nul | findstr /i "llama3.1:8b" >nul
 if errorlevel 1 (
-  echo   Downloading the llama3.2 model. This is about 2 GB and takes a while...
-  ollama pull llama3.2
+  echo   Downloading the llama3.1:8b model. This is about 5 GB and takes a while...
+  ollama pull llama3.1:8b
   if errorlevel 1 goto failed
 ) else (
-  echo   The llama3.2 model is already here.
+  echo   The llama3.1:8b model is already here.
 )
 
 echo.
-echo   All done. Double-click start.bat whenever you want to make cards.
+echo   All done. Double-click start-notetaker.bat whenever you want cards.
 echo.
 pause
 exit /b 0
