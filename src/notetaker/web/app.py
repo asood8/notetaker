@@ -303,8 +303,11 @@ def create_app() -> FastAPI:
             raise HTTPException(status_code=404, detail="No such file.")
 
         job: Job = jobs.get(job_id, "job")
-        if job.state != "done" or job.directory is None:
-            raise HTTPException(status_code=409, detail="That deck is not ready yet.")
+        # A run of a few hundred sections takes hours, and the cards are
+        # written as they are made, so there is no reason to withhold what is
+        # already finished from someone who wants to start studying it.
+        if job.directory is None or not job.cards:
+            raise HTTPException(status_code=409, detail="No cards have been made yet.")
 
         # `keep` lets someone untick the cards they do not want before
         # downloading. A model that is right most of the time still needs a
@@ -373,6 +376,19 @@ def _run(
         job.sections.append({"tag": chunk.tag or "(no heading)", "cards": added})
         jobs.update(job, done=job.done + 1)
 
+    stem = _stem(job)
+    deck_name = deck.strip() or Path(job.name).stem
+
+    def save(result, number: int) -> None:
+        """Write after every section, so an interrupted run still leaves a deck."""
+        if len(result.cards) == len(job.cards):
+            return
+        write_apkg(result.cards, job.directory / f"{stem}.apkg", deck_name)
+        write_tsv(result.cards, job.directory / f"{stem}.tsv")
+        if result.rejected:
+            write_rejects(result.rejected, job.directory / f"{stem}.dropped.tsv")
+        jobs.update(job, cards=list(result.cards))
+
     try:
         result = generate_cards(
             chunks,
@@ -382,6 +398,7 @@ def _run(
             extra_tags=[tag for tag in tags.split() if tag],
             check=verifier,
             on_chunk=progress,
+            on_section=save,
         )
     except Exception as exc:  # the thread must not die silently
         jobs.update(job, state="error", error=str(exc))
@@ -390,13 +407,6 @@ def _run(
     if not result.cards:
         jobs.update(job, state="error", error=_no_cards_message(result))
         return
-
-    assert job.directory is not None
-    stem = _stem(job)
-    write_apkg(result.cards, job.directory / f"{stem}.apkg", deck.strip() or Path(job.name).stem)
-    write_tsv(result.cards, job.directory / f"{stem}.tsv")
-    if result.rejected:
-        write_rejects(result.rejected, job.directory / f"{stem}.dropped.tsv")
 
     jobs.update(
         job,

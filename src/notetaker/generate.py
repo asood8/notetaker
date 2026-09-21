@@ -50,80 +50,93 @@ def generate_cards(
     extra_tags: Iterable[str] = (),
     check: Callable[[list[Card], str], list[bool]] | None = None,
     on_chunk: Callable[[Chunk, int], None] | None = None,
+    on_section: Callable[[GenerationResult, int], None] | None = None,
 ) -> GenerationResult:
     """Generate cards for every chunk, skipping anything the model gets wrong.
 
     A bad response for one chunk should never lose the cards from the others,
     so failures are counted and reported rather than raised.
+
+    `on_section` runs after every section, whatever happened to it, and is how
+    the caller saves as it goes. A run over a few hundred sections is hours
+    long, and holding all of it in memory until the end means an interrupted
+    run leaves nothing behind.
     """
     result = GenerationResult()
     deduper = Deduper()
     shared_tags = list(extra_tags)
     schema = style.batch.model_json_schema()
 
-    for chunk in chunks:
-        # Course admin is recognised from the heading, so the model is never
-        # asked about it. Cheaper than generating cards and throwing them away,
-        # and it keeps exam dates out of the deck entirely.
-        if is_admin_section(chunk.heading_path):
-            result.skipped_sections += 1
-            _report(on_chunk, chunk, 0)
-            continue
-
-        system, user = build_prompt(
-            chunk,
-            max_cards_per_chunk,
-            system=style.system,
-            template=style.template,
-        )
-
+    for number, chunk in enumerate(chunks, start=1):
         try:
-            raw = client.complete(system, user, schema)
-        except LLMError:
-            result.failed_chunks += 1
-            _report(on_chunk, chunk, 0)
-            continue
+            # Course admin is recognised from the heading, so the model is never
+            # asked about it. Cheaper than generating cards and throwing them away,
+            # and it keeps exam dates out of the deck entirely.
+            if is_admin_section(chunk.heading_path):
+                result.skipped_sections += 1
+                _report(on_chunk, chunk, 0)
+                continue
 
-        try:
-            batch = style.batch.model_validate(raw)
-        except ValidationError:
-            result.invalid_responses += 1
-            _report(on_chunk, chunk, 0)
-            continue
+            system, user = build_prompt(
+                chunk,
+                max_cards_per_chunk,
+                system=style.system,
+                template=style.template,
+            )
 
-        cards = style.to_cards(batch)
-        result.low_quality += len(batch.cards) - len(cards)
-        cards = cards[:max_cards_per_chunk]
+            try:
+                raw = client.complete(system, user, schema)
+            except LLMError:
+                result.failed_chunks += 1
+                _report(on_chunk, chunk, 0)
+                continue
 
-        if check is not None and cards:
-            supported = check(cards, chunk.text)
-            kept = []
-            for card, ok in zip(cards, supported, strict=False):
-                if ok:
-                    kept.append(card)
-                else:
-                    result.unsupported += 1
+            try:
+                batch = style.batch.model_validate(raw)
+            except ValidationError:
+                result.invalid_responses += 1
+                _report(on_chunk, chunk, 0)
+                continue
+
+            cards = style.to_cards(batch)
+            result.low_quality += len(batch.cards) - len(cards)
+            cards = cards[:max_cards_per_chunk]
+
+            if check is not None and cards:
+                supported = check(cards, chunk.text)
+                kept = []
+                for card, ok in zip(cards, supported, strict=False):
+                    if ok:
+                        kept.append(card)
+                    else:
+                        result.unsupported += 1
+                        result.rejected.append(
+                            Rejected(card, "your notes do not support this", chunk.tag)
+                        )
+                cards = kept
+
+            added = 0
+            for card in cards:
+                reason = rejection_reason(card)
+                if reason is not None:
+                    result.low_quality += 1
+                    result.rejected.append(Rejected(card, reason, chunk.tag))
+                    continue
+                if not deduper.add(card):
+                    result.duplicates += 1
                     result.rejected.append(
-                        Rejected(card, "your notes do not support this", chunk.tag)
+                        Rejected(card, "already covered by another card", chunk.tag)
                     )
-            cards = kept
+                    continue
+                card.tags = _tags_for(chunk, shared_tags)
+                result.cards.append(card)
+                added += 1
 
-        added = 0
-        for card in cards:
-            reason = rejection_reason(card)
-            if reason is not None:
-                result.low_quality += 1
-                result.rejected.append(Rejected(card, reason, chunk.tag))
-                continue
-            if not deduper.add(card):
-                result.duplicates += 1
-                result.rejected.append(Rejected(card, "already covered by another card", chunk.tag))
-                continue
-            card.tags = _tags_for(chunk, shared_tags)
-            result.cards.append(card)
-            added += 1
+            _report(on_chunk, chunk, added)
 
-        _report(on_chunk, chunk, added)
+        finally:
+            if on_section is not None:
+                on_section(result, number)
 
     return result
 

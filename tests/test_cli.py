@@ -294,3 +294,102 @@ def test_checking_makes_the_estimate_longer() -> None:
     from notetaker.timing import estimate
 
     assert estimate(100) != estimate(100, check=True)
+
+
+# --- surviving an interrupted run --------------------------------------------
+
+
+class StopsPartWay:
+    """Writes cards for a while, then behaves like someone pressing Ctrl-C."""
+
+    name = "stops"
+
+    def __init__(self, after: int = 2) -> None:
+        self.after = after
+        self.calls = 0
+
+    def complete(self, system, user, schema):
+        self.calls += 1
+        if self.calls > self.after:
+            raise KeyboardInterrupt
+        return {
+            "cards": [
+                {"question": f"What is topic {self.calls}?", "answer": f"Subject {self.calls}"}
+            ]
+        }
+
+
+def test_an_interrupted_run_keeps_what_it_had(tmp_path: Path, monkeypatch) -> None:
+    from notetaker import cli
+
+    monkeypatch.setattr(cli, "_build_client", lambda *a, **k: StopsPartWay(after=2))
+    notes = long_notes(tmp_path, 6)
+    out = tmp_path / "out"
+
+    result = runner.invoke(app, ["cards", str(notes), "--out", str(out)])
+
+    assert (out / "big.apkg").exists(), "the deck should survive the interruption"
+    assert (out / "big.tsv").exists()
+    assert "What is topic 1?" in (out / "big.tsv").read_text(encoding="utf-8")
+    assert result.exit_code == 130
+
+
+def test_an_interrupted_run_says_where_to_resume(tmp_path: Path, monkeypatch) -> None:
+    from notetaker import cli
+
+    monkeypatch.setattr(cli, "_build_client", lambda *a, **k: StopsPartWay(after=2))
+    notes = long_notes(tmp_path, 6)
+
+    result = runner.invoke(app, ["cards", str(notes), "--out", str(tmp_path / "out")])
+
+    assert "stopped   after section 3 of 6" in result.output
+    assert "resume    --sections 4-6" in result.output
+
+
+def test_an_interrupt_before_any_cards_says_so(tmp_path: Path, monkeypatch) -> None:
+    from notetaker import cli
+
+    monkeypatch.setattr(cli, "_build_client", lambda *a, **k: StopsPartWay(after=0))
+    notes = long_notes(tmp_path, 6)
+
+    result = runner.invoke(app, ["cards", str(notes), "--out", str(tmp_path / "out")])
+
+    assert "nothing had been generated yet" in result.output
+
+
+def test_a_resumed_range_keeps_its_own_files(tmp_path: Path, monkeypatch) -> None:
+    from notetaker import cli
+
+    monkeypatch.setattr(cli, "_build_client", lambda *a, **k: StopsPartWay(after=99))
+    notes = long_notes(tmp_path, 6)
+    out = tmp_path / "out"
+
+    runner.invoke(app, ["cards", str(notes), "--sections", "4-6", "--out", str(out)])
+
+    assert (out / "big.4-6.apkg").exists()
+
+
+def test_cards_are_written_before_the_run_ends(tmp_path: Path) -> None:
+    """The point of saving per section: the file exists while work continues."""
+    from notetaker.chunking import chunk_markdown
+    from notetaker.generate import generate_cards
+
+    seen: list[int] = []
+
+    class Client:
+        name = "stub"
+
+        def complete(self, system, user, schema):
+            return {"cards": [{"question": "What is osmosis?", "answer": "Diffusion of water"}]}
+
+    notes = long_notes(tmp_path, 4).read_text(encoding="utf-8")
+    generate_cards(
+        chunk_markdown(notes),
+        Client(),
+        on_section=lambda result, number: seen.append(len(result.cards)),
+    )
+
+    # One callback per section, each seeing more than the last.
+    assert len(seen) == 4
+    assert seen == sorted(seen)
+    assert seen[0] >= 1

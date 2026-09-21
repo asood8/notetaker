@@ -158,15 +158,25 @@ def cards(
         )
     typer.echo("")
 
-    result = generate_cards(
-        chunks,
-        client,
-        style=style,
-        max_cards_per_chunk=max_cards,
-        extra_tags=tag or [],
-        check=(lambda cards, passage: check_cards(cards, passage, client)) if check else None,
-        on_chunk=_progress(len(chunks)),
-    )
+    # A range goes in the file name. Working through a document a lecture at a
+    # time otherwise means each run quietly overwrites the last one's deck.
+    stem = f"{notes.stem}.{first}-{last}" if ranged else notes.stem
+    saver = _Saver(out, stem, deck or notes.stem)
+
+    try:
+        result = generate_cards(
+            chunks,
+            client,
+            style=style,
+            max_cards_per_chunk=max_cards,
+            extra_tags=tag or [],
+            check=(lambda cards, passage: check_cards(cards, passage, client)) if check else None,
+            on_chunk=_progress(len(chunks)),
+            on_section=saver,
+        )
+    except KeyboardInterrupt:
+        _report_interrupted(saver, first, last, total_sections)
+        raise typer.Exit(code=130) from None
 
     typer.echo("")
     if not result.cards:
@@ -175,21 +185,7 @@ def cards(
         raise typer.Exit(code=1)
 
     typer.echo(f"  generated {len(result.cards)} cards{_notes_on(result)}")
-
-    deck_name = deck or notes.stem
-    # A range goes in the file name. Working through a document a lecture at a
-    # time otherwise means each run quietly overwrites the last one's deck.
-    stem = f"{notes.stem}.{first}-{last}" if ranged else notes.stem
-    apkg_path = write_apkg(result.cards, out / f"{stem}.apkg", deck_name)
-    tsv_path = write_tsv(result.cards, out / f"{stem}.tsv")
-
-    typer.echo("")
-    typer.echo(f"  {apkg_path}   double-click to import")
-    typer.echo(f"  {tsv_path}   or use File > Import")
-
-    if result.rejected:
-        rejects_path = write_rejects(result.rejected, out / f"{stem}.dropped.tsv")
-        typer.echo(f"  {rejects_path}   what was thrown away, and why")
+    _report_files(saver)
 
     if last < total_sections:
         typer.echo("")
@@ -355,6 +351,65 @@ def _build_client(backend: str, *, model: str, num_ctx: int, timeout: float) -> 
     if backend == "ollama":
         return OllamaLLM(model, num_ctx=num_ctx, timeout=timeout)
     raise typer.BadParameter(f"unknown backend {backend!r}; expected 'ollama' or 'fake'")
+
+
+class _Saver:
+    """Writes the deck out after every section.
+
+    A run over a few hundred sections takes hours. Holding everything until
+    the end means a closed window, a flat battery or a stray Ctrl-C throws all
+    of it away, which is exactly the run you least want to repeat. Writing
+    each time costs about 90ms, or well under a percent of a long run.
+    """
+
+    def __init__(self, out: Path, stem: str, deck_name: str) -> None:
+        self.out = out
+        self.stem = stem
+        self.deck_name = deck_name
+        self.section = 0
+        self.cards = 0
+        self.apkg: Path | None = None
+        self.tsv: Path | None = None
+        self.rejects: Path | None = None
+
+    def __call__(self, result: GenerationResult, number: int) -> None:
+        self.section = number
+        if len(result.cards) == self.cards and not result.rejected:
+            return
+
+        self.cards = len(result.cards)
+        if result.cards:
+            self.apkg = write_apkg(result.cards, self.out / f"{self.stem}.apkg", self.deck_name)
+            self.tsv = write_tsv(result.cards, self.out / f"{self.stem}.tsv")
+        if result.rejected:
+            self.rejects = write_rejects(result.rejected, self.out / f"{self.stem}.dropped.tsv")
+
+
+def _report_files(saver: _Saver) -> None:
+    typer.echo("")
+    if saver.apkg:
+        typer.echo(f"  {saver.apkg}   double-click to import")
+    if saver.tsv:
+        typer.echo(f"  {saver.tsv}   or use File > Import")
+    if saver.rejects:
+        typer.echo(f"  {saver.rejects}   what was thrown away, and why")
+
+
+def _report_interrupted(saver: _Saver, first: int, last: int, total: int) -> None:
+    """Say what survived and how to pick the run back up."""
+    reached = first - 1 + saver.section
+    typer.echo("")
+    typer.secho(f"  stopped   after section {reached} of {total}", fg=typer.colors.YELLOW)
+
+    if not saver.cards:
+        typer.echo("  nothing had been generated yet, so nothing was saved")
+        return
+
+    typer.echo(f"  saved     {saver.cards} cards from the sections that finished")
+    _report_files(saver)
+    if reached < last:
+        typer.echo("")
+        typer.echo(f"  resume    --sections {reached + 1}-{last}")
 
 
 def _notice(message: str) -> None:

@@ -46,6 +46,11 @@ before starting rather than after.
 Then you pick how much of it you want. All of it, or sections 10 to 40 if you
 only care about one lecture.
 
+Cards are written to disk as each section finishes, so a long run that gets
+interrupted still leaves you the cards it had made. From the terminal, a
+stopped run tells you the range to resume from; on the page there is a link to
+download what is done while the rest keeps going.
+
 ### Watching it work
 
 Every section is listed up front and fills in as the model finishes with it.
@@ -199,6 +204,8 @@ several models and prints the cards so you can judge them yourself.
 - The checker drops about a third of cards, and whether that is correct or too
   eager has not been measured
 - Cards can be dropped before downloading, but not edited
+- Near-duplicates whose questions differ in wording but share an answer still
+  get through
 
 ## License
 

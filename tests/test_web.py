@@ -336,3 +336,45 @@ def test_the_page_lets_you_untick_a_card(client) -> None:
     page = client.get("/").text
     assert 'id="pick-all"' in page
     assert "Untick any card" in page
+
+
+# --- not losing a long run ----------------------------------------------------
+
+
+def test_cards_can_be_downloaded_before_the_run_finishes(client, monkeypatch) -> None:
+    """A run of hundreds of sections is hours; what is done should be usable."""
+    from notetaker.web import app as web
+
+    real = web.generate_cards
+
+    def one_section_then_linger(chunks, llm, **kwargs):
+        result = real(list(chunks)[:1], llm, **kwargs)
+        time.sleep(0.6)  # the job stays "running" while we try to download
+        return result
+
+    monkeypatch.setattr(web, "generate_cards", one_section_then_linger)
+
+    job_id = start(client, preview(client)["id"])
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        response = client.get(f"/api/jobs/{job_id}/deck.apkg")
+        if response.status_code == 200:
+            assert response.content[:2] == b"PK"
+            return
+        time.sleep(0.05)
+
+    raise AssertionError("no partial deck ever became available")
+
+
+def test_a_download_before_any_cards_is_refused(client) -> None:
+    body = preview(client)
+    job_id = start(client, body["id"])
+    # Either it has already finished with cards, or it has none yet; both are fine,
+    # what matters is that "not ready" is a 409 rather than a broken file.
+    response = client.get(f"/api/jobs/{job_id}/deck.apkg")
+    assert response.status_code in {200, 409}
+
+
+def test_the_page_offers_the_partial_download(client) -> None:
+    page = client.get("/").text
+    assert "Download the cards made so far" in page

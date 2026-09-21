@@ -414,6 +414,10 @@
     <div id="step-running" hidden>
       <ol class="sections" id="progress"></ol>
       <p class="hint" id="running-note">Working through your notes.</p>
+      <p class="hint" id="partial" hidden>
+        <a id="partial-link" href="#">Download the cards made so far</a>
+        &mdash; the rest keep coming.
+      </p>
     </div>
 
     <div class="error" id="error" hidden></div>
@@ -712,7 +716,15 @@
         if (job.total && el("progress").children.length !== job.total) layOut(job.total);
         fillProgress(job.sections);
 
-        if (job.state === "running") { setTimeout(() => poll(id), 700); return; }
+        if (job.state === "running") {
+          // Hours of work should not be hostage to the window staying open.
+          if (job.cards.length) {
+            el("partial").hidden = false;
+            el("partial-link").href = "/api/jobs/" + job.id + "/deck.apkg";
+          }
+          setTimeout(() => poll(id), 700);
+          return;
+        }
         if (job.state === "error") { show("step-setup"); fail(job.error); return; }
         finish(job);
       })
@@ -829,6 +841,7 @@
       el("dropped-file").hidden = true;
     }
 
+    el("partial").hidden = true;
     show("step-setup");
     el("results").hidden = false;
     el("results").scrollIntoView({ behavior: "smooth", block: "start" });
