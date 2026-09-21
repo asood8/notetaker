@@ -294,3 +294,45 @@ def test_an_unknown_job_is_a_404(client) -> None:
 def test_an_upload_cannot_escape_its_directory(client) -> None:
     # The filename comes from the browser and is not to be trusted.
     assert preview(client, name="../../escape.md")["name"] == "escape.md"
+
+
+# --- choosing which cards to keep --------------------------------------------
+
+
+def test_only_the_ticked_cards_are_downloaded(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    job = finish(client, job_id)
+    assert len(job["cards"]) > 1
+
+    full = client.get(f"/api/jobs/{job_id}/deck.tsv").text
+    one = client.get(f"/api/jobs/{job_id}/deck.tsv?keep=0").text
+
+    assert len(one.splitlines()) < len(full.splitlines())
+    assert job["cards"][0]["question"] in one
+
+
+def test_a_selected_deck_is_still_a_valid_package(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    finish(client, job_id)
+    response = client.get(f"/api/jobs/{job_id}/deck.apkg?keep=0")
+    assert response.content[:2] == b"PK"
+
+
+def test_selecting_nothing_is_refused(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    finish(client, job_id)
+    assert client.get(f"/api/jobs/{job_id}/deck.tsv?keep=").status_code == 400
+
+
+def test_nonsense_indices_are_ignored(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    finish(client, job_id)
+    response = client.get(f"/api/jobs/{job_id}/deck.tsv?keep=0,999,abc")
+    assert response.status_code == 200
+    assert len(response.text.splitlines()) == 5
+
+
+def test_the_page_lets_you_untick_a_card(client) -> None:
+    page = client.get("/").text
+    assert 'id="pick-all"' in page
+    assert "Untick any card" in page

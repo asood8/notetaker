@@ -259,6 +259,17 @@
   td { padding: 0.7rem 1rem 0.7rem 0; border-bottom: 1px solid var(--guide); vertical-align: top; }
   td.tag { font-family: var(--mono); font-size: 0.82rem; color: var(--ink-soft); padding-right: 0; }
   td.why { font-size: 0.85rem; color: var(--rule); }
+  td.pick, th.pick { width: 2rem; padding-right: 0.5rem; }
+  td.pick input, th.pick input { accent-color: var(--rule); }
+  tr.dropped-row td:not(.pick) { opacity: 0.4; text-decoration: line-through; }
+
+  .warning {
+    border-left: 3px solid var(--rule);
+    background: #fdf3f2;
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+  }
 
   details { margin-top: 2rem; }
   details summary { cursor: pointer; color: var(--ink-soft); font-size: 0.92rem; }
@@ -317,6 +328,12 @@
 
     <!-- 4. set up the run -->
     <div id="step-setup" hidden>
+      <div class="warning" id="no-model" hidden>
+        <strong>Ollama isn&rsquo;t running.</strong>
+        Without it the cards are built by a crude sentence matcher, not a model,
+        and they will not be good enough to study from. Start Ollama and reload
+        this page.
+      </div>
       <h2 id="file-name"></h2>
       <p class="summary" id="summary"></p>
       <div id="notices"></div>
@@ -411,8 +428,14 @@
       <a id="tsv" href="#">Download table (.tsv)</a>
       <a id="dropped-file" href="#" hidden>Download dropped cards</a>
     </div>
+    <p class="dropped" id="selected-line"></p>
     <table>
-      <thead><tr><th>Question</th><th>Answer</th><th>Tags</th></tr></thead>
+      <thead>
+        <tr>
+          <th class="pick"><input type="checkbox" id="pick-all" checked title="Select all"></th>
+          <th>Question</th><th>Answer</th><th>Tags</th>
+        </tr>
+      </thead>
       <tbody id="cards"></tbody>
     </table>
 
@@ -436,6 +459,7 @@
   let chosenFile = null;
   let preview = null;
   let backend = "ollama";
+  let currentJob = null;
 
   function show(step) {
     steps.forEach((name) => { el(name).hidden = name !== step; });
@@ -472,6 +496,15 @@
   el("scan-back").addEventListener("click", () => { el("file").value = ""; show("step-choose"); });
   el("start-over").addEventListener("click", () => { el("file").value = ""; show("step-choose"); });
   el("scan-go").addEventListener("click", () => read(chosenFile, true));
+
+  el("pick-all").addEventListener("change", () => {
+    const on = el("pick-all").checked;
+    chosenBoxes().forEach((box) => {
+      box.checked = on;
+      box.closest("tr").classList.toggle("dropped-row", !on);
+    });
+    updateSelection();
+  });
 
   // --- reading it -----------------------------------------------------------
 
@@ -595,8 +628,8 @@
         select.innerHTML = "<option>No model found</option>";
         select.disabled = true;
         el("model-hint").textContent =
-          "Ollama is not running, so cards will be built by the offline matcher. " +
-          "Start Ollama for real results.";
+          "Ollama is not running. Start it, then reload this page.";
+        el("no-model").hidden = false;
         return;
       }
       select.innerHTML = "";
@@ -712,6 +745,33 @@
     });
   }
 
+  function chosenBoxes() {
+    return Array.from(el("cards").querySelectorAll('input[type="checkbox"]'));
+  }
+
+  function updateSelection() {
+    if (!currentJob) return;
+    const boxes = chosenBoxes();
+    const kept = boxes.filter((box) => box.checked);
+    const total = boxes.length;
+
+    el("selected-line").textContent =
+      kept.length === total
+        ? "Untick any card you don't want before downloading."
+        : kept.length + " of " + total + " cards will be downloaded.";
+
+    // Everything ticked is the same as the file already on disk, so the plain
+    // link is used and the server does not rebuild the deck for nothing.
+    const base = "/api/jobs/" + currentJob.id + "/deck.";
+    const query =
+      kept.length === total
+        ? ""
+        : "?keep=" + kept.map((box) => box.dataset.index).join(",");
+
+    el("apkg").href = base + "apkg" + query;
+    el("tsv").href = base + "tsv" + query;
+  }
+
   function finish(job) {
     el("count").textContent =
       job.cards.length === 1 ? "1 card" : job.cards.length + " cards";
@@ -719,11 +779,37 @@
     el("apkg").href = "/api/jobs/" + job.id + "/deck.apkg";
     el("tsv").href = "/api/jobs/" + job.id + "/deck.tsv";
 
-    rows(el("cards"), job.cards, [
-      { value: (card) => card.question },
-      { value: (card) => card.answer },
-      { className: "tag", value: (card) => card.tags.join(" ") },
-    ]);
+    currentJob = job;
+    const body = el("cards");
+    body.innerHTML = "";
+    job.cards.forEach((card, index) => {
+      const row = document.createElement("tr");
+
+      const pick = document.createElement("td");
+      pick.className = "pick";
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.checked = true;
+      box.dataset.index = index;
+      box.addEventListener("change", () => {
+        row.classList.toggle("dropped-row", !box.checked);
+        updateSelection();
+      });
+      pick.appendChild(box);
+      row.appendChild(pick);
+
+      [card.question, card.answer, card.tags.join(" ")].forEach((text, column) => {
+        const cell = document.createElement("td");
+        if (column === 2) cell.className = "tag";
+        cell.textContent = text;
+        row.appendChild(cell);
+      });
+
+      body.appendChild(row);
+    });
+
+    el("pick-all").checked = true;
+    updateSelection();
 
     if (job.rejected.length) {
       el("rejects").hidden = false;

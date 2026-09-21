@@ -317,6 +317,9 @@ def _progress(total: int) -> Callable[[Chunk, int], None]:
 def serve(
     host: Annotated[str, typer.Option("--host", help="Address to bind.")] = "127.0.0.1",
     port: Annotated[int, typer.Option("--port", help="Port to listen on.")] = 8000,
+    open_browser: Annotated[
+        bool, typer.Option("--open/--no-open", help="Open the page in your browser.")
+    ] = True,
 ) -> None:
     """Open a local page for dropping notes onto."""
     try:
@@ -331,7 +334,18 @@ def serve(
         )
         raise typer.Exit(code=1) from exc
 
-    typer.echo(f"  notetaker is at http://{host}:{port}")
+    address = f"http://{'127.0.0.1' if host in {'0.0.0.0', '::'} else host}:{port}"
+    typer.echo(f"  notetaker is at {address}")
+    typer.echo("  close this window when you are finished")
+
+    if open_browser:
+        # Give uvicorn a moment to bind, otherwise the browser lands on a
+        # connection error and the person assumes it is broken.
+        import threading
+        import webbrowser
+
+        threading.Timer(1.5, lambda: webbrowser.open(address)).start()
+
     uvicorn.run(create_app(), host=host, port=port, log_level="warning")
 
 

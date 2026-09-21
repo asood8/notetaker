@@ -298,7 +298,7 @@ def create_app() -> FastAPI:
         return jobs.get(job_id, "job").snapshot()
 
     @app.get("/api/jobs/{job_id}/deck.{extension}")
-    def download(job_id: str, extension: str) -> FileResponse:
+    def download(job_id: str, extension: str, keep: str | None = None) -> FileResponse:
         if extension not in {"apkg", "tsv", "dropped.tsv"}:
             raise HTTPException(status_code=404, detail="No such file.")
 
@@ -306,12 +306,39 @@ def create_app() -> FastAPI:
         if job.state != "done" or job.directory is None:
             raise HTTPException(status_code=409, detail="That deck is not ready yet.")
 
+        # `keep` lets someone untick the cards they do not want before
+        # downloading. A model that is right most of the time still needs a
+        # way to throw out the times it wasn't, without editing the deck in
+        # Anki afterwards.
+        if keep is not None and extension != "dropped.tsv":
+            return _selected(job, extension, keep)
+
         path = job.directory / f"{_stem(job)}.{extension}"
         if not path.exists():
             raise HTTPException(status_code=404, detail="No such file.")
         return FileResponse(path, filename=path.name)
 
     return app
+
+
+def _selected(job: Job, extension: str, keep: str) -> FileResponse:
+    """Write a deck containing only the cards that are still ticked."""
+    wanted = []
+    for piece in keep.split(","):
+        piece = piece.strip()
+        if piece.isdigit() and int(piece) < len(job.cards):
+            wanted.append(job.cards[int(piece)])
+
+    if not wanted:
+        raise HTTPException(status_code=400, detail="No cards were selected.")
+
+    assert job.directory is not None
+    path = job.directory / f"{_stem(job)}.selected.{extension}"
+    if extension == "apkg":
+        write_apkg(wanted, path, Path(job.name).stem)
+    else:
+        write_tsv(wanted, path)
+    return FileResponse(path, filename=f"{_stem(job)}.{extension}")
 
 
 def _stem(job: Job) -> str:

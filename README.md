@@ -3,16 +3,25 @@
 Point it at your notes, get back an Anki deck. It runs a local model through
 [Ollama](https://ollama.com), so nothing you feed it leaves your computer.
 
-I made this because writing flashcards is the worst part of studying and most
-of it isn't really thinking. You read a paragraph, you pull out the three
-things worth remembering, you type them into two boxes. A small model can do
-that part.
+Writing flashcards is the most tedious part of studying, and most of it isn't
+really thinking. You read a paragraph, pull out the three things worth
+remembering, and type them into two boxes. A small model can do that part.
 
 ![Choosing what to turn into cards](docs/images/web-setup.jpg)
 
 ## Getting started
 
-You need Python 3.11 or newer, and Ollama with a model pulled.
+On Windows, without using a terminal:
+
+1. Install [Python](https://www.python.org/downloads/), ticking
+   **Add python.exe to PATH** during setup.
+2. Install [Ollama](https://ollama.com/download).
+3. Double-click **setup.bat**. It installs everything and downloads the model,
+   which is about 2 GB, so it takes a while. This is a one-time thing.
+4. Double-click **start-notetaker.bat** whenever you want to make cards. Your
+   browser opens by itself. Closing the black window stops it.
+
+Anywhere else, or if you'd rather do it yourself:
 
 ```console
 $ ollama pull llama3.2
@@ -20,14 +29,14 @@ $ pip install -e ".[web]"
 $ notetaker serve
 ```
 
-Open the address it prints, drop a file on the page, and go. Markdown, plain
-text and PDFs all work.
+Either way you end up on the same page. Drop a file on it and go. Markdown,
+plain text and PDFs all work.
 
 Dropping a file doesn't start anything. It reads your notes, splits them at
 your headings, and tells you what it found: how many sections, what they're
-called, and how long making cards from them would take. My own lecture slides
-turn out to be 497 sections and about four hours, which is worth knowing before
-you start rather than after.
+called, and how long making cards from them would take. One real set of lecture
+slides came out at 497 sections and roughly four hours, which is worth knowing
+before starting rather than after.
 
 Then you pick how much of it you want. All of it, or sections 10 to 40 if you
 only care about one lecture.
@@ -38,9 +47,12 @@ Every section is listed up front and fills in as the model finishes with it.
 
 ![Sections filling in one at a time](docs/images/web-progress.jpg)
 
-At the end you get the cards in a table and two files to download. Double-click
-the `.apkg` and Anki takes care of the rest. The `.tsv` is for when you'd rather
-look things over in a spreadsheet first.
+At the end you get the cards in a table, each with a tick box. Untick anything
+that looks wrong before downloading, which is the quickest answer to a model
+that is right most of the time but not all of it.
+
+Double-click the `.apkg` and Anki takes care of the rest. The `.tsv` is for when
+you'd rather look things over in a spreadsheet first.
 
 ![The finished cards](docs/images/web-results.jpg)
 
@@ -76,9 +88,9 @@ rest.
 
 ## Which model
 
-This surprised me: bigger is worse here. Pulling facts out of a paragraph isn't
-a reasoning problem, and a 3B model does it about as well as a 7B one and
-several times faster.
+Bigger is worse here, which is not what you would expect. Pulling facts out of
+a paragraph isn't a reasoning problem, and a 3B model does it about as well as
+a 7B one and several times faster.
 
 | Model | Per call | Notes |
 | --- | --- | --- |
@@ -116,14 +128,14 @@ gets read back against the section it came from, and the ones the passage
 doesn't support are dropped.
 
 The failure that actually hurts isn't an ugly card, it's a confident wrong one.
-From a nearly empty slide, `llama3.2` gave me:
+From a nearly empty slide, `llama3.2` produced:
 
 > Which sex chromosome determines male characteristics? → X
 
 It's the Y chromosome. The card looks fine, so no rule about its shape will
-catch it. What catches it is that the slide never said it. Ask the same model
-whether the passage supports the card and make it quote the words, and it
-throws it out.
+catch it. What catches it is that the slide never said it. Asked whether the
+passage supports the card, and made to quote the words, the same model throws
+it out.
 
 It doesn't check facts, though. If your notes are wrong, a card faithfully
 repeating them sails through. And it's the same model doing the checking, so
@@ -137,19 +149,20 @@ PDFs don't have headings in any structural sense, but they usually have them
 visually — a short line on its own above a paragraph — and those get recovered
 and used for tags.
 
-A few things I learned feeding it real lecture slides. Text comes out in layout
-mode, because the default drops the blank lines between paragraphs and a whole
-page arrives as one run-on block. Anything printed on lots of pages gets
-stripped first: my slides had the lecturer's name on every one, which looked
+Three things came out of feeding it real lecture slides. Text is extracted in
+layout mode, because the default drops the blank lines between paragraphs and a
+whole page arrives as one run-on block. Anything printed on lots of pages is
+stripped first: one deck had the lecturer's name on every slide, which looked
 exactly like a heading, and 93 sections ended up tagged `Dr_Sollars`. And some
-PDFs have rotated text that can't be read at all, so it tells you how many pages
+PDFs have rotated text that can't be read at all, so it reports how many pages
 are affected.
 
 If there's no text layer, the page offers to read the pictures with a vision
 model (`--ocr` from the terminal). Two warnings. It needs the model to fit in
-your graphics card's memory — on mine it didn't, and a single page took over
-four minutes. And a vision model that misreads gives you a plausible wrong word
-rather than obvious nonsense, which is worse when you're about to memorise it.
+your graphics card's memory; on a machine where it didn't, a single page took
+over four minutes. And a vision model that misreads gives you a plausible wrong
+word rather than obvious nonsense, which is worse when you're about to memorise
+it.
 
 ## Development
 
@@ -168,9 +181,9 @@ several models and prints the cards so you can judge them yourself.
 
 ## Still to do
 
-- The checker drops about a third of cards and I haven't worked out whether
-  that's right or too eager
-- No way to edit a card before it goes into the deck
+- The checker drops about a third of cards, and whether that is correct or too
+  eager has not been measured
+- Cards can be dropped before downloading, but not edited
 
 ## License
 
