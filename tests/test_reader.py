@@ -197,10 +197,10 @@ TOPICS = [
 def test_a_footer_on_many_pages_is_recognized() -> None:
     from notetaker.reader import repeated_lines
 
-    pages = [f"Dr. Sollars\nThe study of {topic} matters here." for topic in TOPICS]
+    pages = [f"Dr. Example\nThe study of {topic} matters here." for topic in TOPICS]
     furniture = repeated_lines(pages)
 
-    assert "dr. sollars" in furniture
+    assert "dr. example" in furniture
     assert not any(topic in key for key in furniture for topic in TOPICS)
 
 
@@ -217,12 +217,12 @@ def test_a_footer_on_a_minority_of_pages_is_still_furniture() -> None:
     # covered 93 pages out of 588, and a proportional threshold missed it.
     from notetaker.reader import repeated_lines
 
-    pages = [f"Dr. Sollars\nContent {n}." for n in range(20)]
-    pages += [f"Dr. Verma\nOther content {n}." for n in range(80)]
+    pages = [f"Dr. Example\nContent {n}." for n in range(20)]
+    pages += [f"Dr. Sample\nOther content {n}." for n in range(80)]
 
     furniture = repeated_lines(pages)
-    assert "dr. sollars" in furniture
-    assert "dr. verma" in furniture
+    assert "dr. example" in furniture
+    assert "dr. sample" in furniture
 
 
 def test_a_line_appearing_once_is_never_furniture() -> None:
@@ -250,8 +250,8 @@ def test_very_short_documents_are_left_alone() -> None:
 def test_furniture_is_removed_from_the_page() -> None:
     from notetaker.reader import strip_furniture
 
-    page = "Dr. Sollars\nOsmosis is the diffusion of water."
-    assert strip_furniture(page, {"dr. sollars"}) == "Osmosis is the diffusion of water."
+    page = "Dr. Example\nOsmosis is the diffusion of water."
+    assert strip_furniture(page, {"dr. example"}) == "Osmosis is the diffusion of water."
 
 
 def test_stripping_nothing_leaves_the_page_untouched() -> None:
@@ -266,7 +266,7 @@ def test_a_repeated_footer_does_not_become_a_heading(tmp_path: Path) -> None:
     pdf.set_font("helvetica", size=12)
     for topic in TOPICS:
         pdf.add_page()
-        pdf.multi_cell(0, 8, "Dr. Sollars")
+        pdf.multi_cell(0, 8, "Dr. Example")
         pdf.ln(3)
         pdf.multi_cell(0, 8, f"The study of {topic} explains how transport works.")
     path = tmp_path / "lectures.pdf"
@@ -274,8 +274,8 @@ def test_a_repeated_footer_does_not_become_a_heading(tmp_path: Path) -> None:
 
     text = read_notes(path)
 
-    assert "## Dr. Sollars" not in text
-    assert "Dr. Sollars" not in text
+    assert "## Dr. Example" not in text
+    assert "Dr. Example" not in text
     assert "The study of membranes" in text
 
 
@@ -284,7 +284,7 @@ def test_notices_are_reported_to_the_caller(tmp_path: Path) -> None:
     pdf.set_font("helvetica", size=12)
     for topic in TOPICS:
         pdf.add_page()
-        pdf.multi_cell(0, 8, "Dr. Sollars")
+        pdf.multi_cell(0, 8, "Dr. Example")
         pdf.ln(3)
         pdf.multi_cell(0, 8, f"The behaviour of {topic} is examined closely here.")
     path = tmp_path / "lectures.pdf"

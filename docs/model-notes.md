@@ -186,7 +186,7 @@ slides -- broke four things that the sample never could.
 **A footer became a heading, 93 times.** Every slide carried the lecturer's
 name. A short unpunctuated line with prose beneath it is exactly what the
 heading detector looks for, so the deck split at every slide boundary and
-those sections were tagged `Dr_Sollars`. Removing lines that repeat across
+those sections were tagged with it. Removing lines that repeat across
 pages fixed it, but the first attempt still missed: the threshold was a share
 of the document, 30%, and the file turned out to be several courses bound
 together, so that lecturer's footer covered only 93 of 588 pages -- 16%, well

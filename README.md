@@ -163,7 +163,7 @@ Three things came out of feeding it real lecture slides. Text is extracted in
 layout mode, because the default drops the blank lines between paragraphs and a
 whole page arrives as one run-on block. Anything printed on lots of pages is
 stripped first: one deck had the lecturer's name on every slide, which looked
-exactly like a heading, and 93 sections ended up tagged `Dr_Sollars`. And some
+exactly like a heading, and 93 sections ended up tagged with it. And some
 PDFs have rotated text that can't be read at all, so it reports how many pages
 are affected.
 
