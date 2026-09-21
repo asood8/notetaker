@@ -417,6 +417,9 @@
     <div id="step-running" hidden>
       <ol class="sections" id="progress"></ol>
       <p class="hint" id="running-note">Working through your notes.</p>
+      <p class="note" id="reattached" hidden>
+        Picked this run back up &mdash; it kept going while the page was away.
+      </p>
       <p class="hint" id="partial" hidden>
         <a id="partial-link" href="#">Download the cards made so far</a>
         &mdash; the rest keep coming.
@@ -626,6 +629,21 @@
   });
 
   // --- models ---------------------------------------------------------------
+
+  // A reload loses the page, not the work: the run carries on in the background.
+  // Ask for anything still going and climb back aboard.
+  fetch("/api/jobs")
+    .then((response) => response.json())
+    .then((body) => {
+      const job = body.running && body.running[0];
+      if (!job) return;
+      currentJob = { id: job.id, cards: [] };
+      el("reattached").hidden = false;
+      el("progress").innerHTML = "";
+      show("step-running");
+      poll(job.id);
+    })
+    .catch(() => {});
 
   fetch("/api/models")
     .then((response) => response.json())
@@ -897,6 +915,7 @@
     }
 
     el("partial").hidden = true;
+    el("reattached").hidden = true;
     show("step-setup");
     el("results").hidden = false;
     el("results").scrollIntoView({ behavior: "smooth", block: "start" });

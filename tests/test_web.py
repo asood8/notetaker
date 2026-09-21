@@ -453,3 +453,49 @@ def test_the_page_says_cards_can_be_edited(client) -> None:
     page = client.get("/").text
     assert "Click any question or answer to change it." in page
     assert "contentEditable" in page
+
+
+# --- a reloaded page finds its way back ---------------------------------------
+
+
+def test_a_running_job_is_listed(client, monkeypatch) -> None:
+    """The fix for a reloaded tab orphaning a run that is still working."""
+    from notetaker.web import app as web
+
+    real = web.generate_cards
+
+    def linger(chunks, llm, **kwargs):
+        result = real(list(chunks)[:1], llm, **kwargs)
+        time.sleep(0.8)
+        return result
+
+    monkeypatch.setattr(web, "generate_cards", linger)
+    job_id = start(client, preview(client)["id"])
+
+    deadline = time.time() + 5
+    while time.time() < deadline:
+        running = client.get("/api/jobs").json()["running"]
+        if running:
+            assert running[0]["id"] == job_id
+            assert running[0]["name"] == "bio.md"
+            assert "total" in running[0]
+            return
+        time.sleep(0.05)
+
+    raise AssertionError("the running job was never listed")
+
+
+def test_finished_jobs_are_not_listed(client) -> None:
+    job_id = start(client, preview(client)["id"])
+    finish(client, job_id)
+    assert client.get("/api/jobs").json()["running"] == []
+
+
+def test_nothing_running_is_an_empty_list(client) -> None:
+    assert client.get("/api/jobs").json() == {"running": []}
+
+
+def test_the_page_asks_for_running_jobs_on_load(client) -> None:
+    page = client.get("/").text
+    assert 'fetch("/api/jobs")' in page
+    assert "it kept going while the page was away" in page

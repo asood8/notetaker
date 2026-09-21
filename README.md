@@ -51,6 +51,10 @@ interrupted still leaves you the cards it had made. From the terminal, a
 stopped run tells you the range to resume from; on the page there is a link to
 download what is done while the rest keeps going.
 
+The work happens on the server rather than in the browser, so closing or
+reloading the tab does not stop it. Open the page again and it picks the run
+back up where it left off.
+
 ### Watching it work
 
 Every section is listed up front and fills in as the model finishes with it.

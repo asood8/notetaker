@@ -157,6 +157,10 @@ class Registry:
             raise HTTPException(status_code=404, detail=f"No such {what}.")
         return item
 
+    def values(self) -> list[Any]:
+        with self._lock:
+            return list(self._items.values())
+
     def update(self, item: Any, **changes: Any) -> None:
         with self._lock:
             for key, value in changes.items():
@@ -298,6 +302,22 @@ def create_app() -> FastAPI:
             daemon=True,
         ).start()
         return {"id": job.id}
+
+    @app.get("/api/jobs")
+    def running() -> dict[str, Any]:
+        """Any run still in progress, so a reloaded page can find its way back.
+
+        Generation happens in a background thread and keeps going whatever the
+        browser does. Losing the tab used to orphan the run: it carried on
+        working and writing cards, with no way left to watch it or fetch them.
+        """
+        unfinished = [job for job in jobs.values() if job.state == "running"]
+        return {
+            "running": [
+                {"id": job.id, "name": job.name, "done": job.done, "total": job.total}
+                for job in unfinished
+            ]
+        }
 
     @app.get("/api/jobs/{job_id}")
     def status(job_id: str) -> dict[str, Any]:
