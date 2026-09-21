@@ -29,7 +29,14 @@ from notetaker.llm.base import LLMError
 DEFAULT_HOST = "http://localhost:11434"
 DEFAULT_MODEL = "llama3.1:8b"
 DEFAULT_NUM_CTX = 8192
-DEFAULT_TIMEOUT = 180.0
+DEFAULT_TIMEOUT = 300.0
+"""Seconds to wait for one section.
+
+180 was fine when the default model was a 3B one answering in about 13
+seconds. The default is now an 8B model taking roughly 40, and a long section
+went over the limit and was lost. A timeout that quietly drops a section is
+worse than one that waits.
+"""
 DEFAULT_SEED = 7
 
 THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
