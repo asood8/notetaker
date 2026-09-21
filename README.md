@@ -1,7 +1,12 @@
-# notetaker
+# notetaker (work in progress)
 
 Point it at your notes, get back an Anki deck. It runs a local model through
 [Ollama](https://ollama.com), so nothing you feed it leaves your computer.
+
+It works and it's being used, but it's still being changed. Card quality varies
+with the model and the notes, defaults move around as more real material gets
+tested against it, and the [things still to do](#still-to-do) at the bottom are
+real rather than aspirational.
 
 Writing flashcards is the most tedious part of studying, and most of it isn't
 really thinking. You read a paragraph, pull out the three things worth
